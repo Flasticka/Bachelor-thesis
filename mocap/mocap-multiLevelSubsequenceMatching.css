@@ -1,0 +1,91 @@
+/*
+    Authors:
+        Jan Sedmidubsky, Brno, Czech Republic, sedmidubsky@gmail.com
+*/
+
+
+/********************* Header *********************/
+
+.header-subsequence_search {
+    background-image: url('background_image-subsequence_search.png'), -webkit-linear-gradient(to right, tan, #f9f9f9); /* For Safari 5.1 to 6.0 */
+    background-image: url('background_image-subsequence_search.png'), -o-linear-gradient(to right, tan, #f9f9f9); /* For Opera 11.1 to 12.0 */
+    background-image: url('background_image-subsequence_search.png'), -moz-linear-gradient(to right, tan, #f9f9f9); /* For Firefox 3.6 to 15 */
+    background-image: url('background_image-subsequence_search.png'), linear-gradient(to right, tan, #f9f9f9); /* Standard syntax */
+    background-image: url('background_image-subsequence_search.png'); /* Standard syntax */
+    background-size: 1220px 220px;
+    background-position: top right;
+    background-repeat: no-repeat;
+    height: 220px;
+}
+
+.header-action_recognition {
+    background-image: url('background_image-action_recognition.png'), -webkit-linear-gradient(to right, tan, #f9f9f9); /* For Safari 5.1 to 6.0 */
+    background-image: url('background_image-action_recognition.png'), -o-linear-gradient(to right, tan, #f9f9f9); /* For Opera 11.1 to 12.0 */
+    background-image: url('background_image-action_recognition.png'), -moz-linear-gradient(to right, tan, #f9f9f9); /* For Firefox 3.6 to 15 */
+    background-image: url('background_image-action_recognition.png'), linear-gradient(to right, tan, #f9f9f9); /* Standard syntax */
+    background-image: url('background_image-action_recognition.png'); /* Standard syntax */
+    background-size: 1220px 220px;
+    background-position: top right;
+    background-repeat: no-repeat;
+    height: 220px;
+}
+
+
+/********************* Section *********************/
+
+.section .title {
+    background-color: rgb(31, 78, 121);
+    border-bottom: solid grey 2px;
+    font-size: medium;
+    font-weight: bold;
+    color: white;
+    padding: 2px 0px 2px 12px;
+    width: auto;
+}
+
+
+/********************* Result *********************/
+
+.resultCanvas {
+    background-color: white;
+    background-image: url('floor.png'), url('btn-rotate.png');
+    background-position: center bottom, right top;
+    background-repeat: no-repeat;
+    height: 180px;
+    width: 160px;
+}
+
+.resultMotionLink {
+    clear: both;
+    margin-left: 5px;
+    margin-top: 3px;
+}
+
+.resultSection {
+    border-top: solid black 1px;
+    clear: both;
+    margin-left: 5px;
+    margin-top: 4px;
+    padding-top: 5px;
+    width: 200px;
+}
+
+.queryRange {
+    margin-top: 11px;
+}
+
+
+/********************* Animation *********************/
+
+.play-selection {
+    border-style: solid;
+    border-color: #bbb #888 #666 #aaa;
+    border-width: 1px 2px 2px 1px;
+    background-image: url('btn-play-selection.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    float: left;
+    height: 28px;
+    margin: 3px 4px 6px 5px;
+    width: 28px;
+}
