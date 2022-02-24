@@ -93,7 +93,7 @@ path.link {
     height: 150px;
     width: 150px;
     margin-top: 20px;
-    background-image: url('/images/floor.png');
+    background-image: url('./images/floor.png');
     background-repeat: no-repeat;
     background-position: bottom;
     border: 3px solid black;
@@ -102,14 +102,14 @@ path.link {
     float: left;
     height: 33px;
     width: 33px;
-    background-image: url('/images/btn-play.png');
+    background-image: url('./images/btn-play.png');
     background-repeat: no-repeat;
   }
   #stop-sequence-button{
     float: left;
     height: 33px;
     width: 33px;
-    background-image: url('/images/btn-stop.png') !important;
+    background-image: url('./images/btn-stop.png') !important;
     background-repeat: no-repeat;
   }
   .sliding-window{

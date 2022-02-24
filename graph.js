@@ -391,7 +391,7 @@ function depthContainerProcedure(node,showWindow){
     const depth = document.createElement("H4");
     const depthContainer = document.createElement("div");
     depthPattern.setAttribute("class", "patt");
-    depthPattern.innerText = "Depth of this cluster: "; 
+    depthPattern.innerText = "Cluster depth: "; 
     depth.setAttribute("class", "val");
     depth.innerText = node.currentCluster.depth
     depthContainer.appendChild(depthPattern);
