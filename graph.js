@@ -159,8 +159,8 @@ function displayGraph(cluster){
       .attr("height", function(d) {return computeSizeNode(d,NODE_HEIGHT)})
       .attr("fill", function(d) { return "url(#" + d.name  + ")"}  )
       .attr("stroke", function(d) { d.currentGraphNodeVisualization = this; return color(d.label); })
-      .on("click",function(d){setStrokeWidth(this,d.path[0].__data__); clickNode(d.path[0].__data__)} )
-      .on("dblclick",function(d){graphLayer(d.path[0].__data__,true); })
+      .on("click",function(d){setStrokeWidth(this,d.srcElement.__data__); clickNode(d.srcElement.__data__)} )
+      .on("dblclick",function(d){graphLayer(d.srcElement.__data__,true); })
       .call(drag(force));
 
 
@@ -391,7 +391,7 @@ function depthContainerProcedure(node,showWindow){
     const depth = document.createElement("H4");
     const depthContainer = document.createElement("div");
     depthPattern.setAttribute("class", "patt");
-    depthPattern.innerText = "Cluster depth: "; 
+    depthPattern.innerText = "Cluser depth: "; 
     depth.setAttribute("class", "val");
     depth.innerText = node.currentCluster.depth
     depthContainer.appendChild(depthPattern);
@@ -706,7 +706,7 @@ const loadButton = document.getElementById("dataLoadButton");
 loadButton.onclick = load;
 
 function load() {
-        callAjax("./output.txt",processResponse)
+        callAjax("output.txt",processResponse)
 }
 
 function parseInToCords(sequence){
@@ -808,7 +808,6 @@ function setFrame(sequence,canvas,button,slider,times){
         
     },);
     frames[0] = new K3D.K3DObject();
-    console.log(frames[0])
     with (frames[0]) {
         color = [29,248,190];
         drawmode = "wireframe";
