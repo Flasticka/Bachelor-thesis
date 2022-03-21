@@ -8,10 +8,7 @@
     <link rel="stylesheet" href="./style.css">
 
     <link href="./mocap/jquery/jquery-ui.css" rel="stylesheet" type="text/css">
-    <div class="load">
-        <input type="file" id="dataFileInput" name="dataFileInput" accept=".data,.txt">
-        <button id="dataLoadButton">Load Data</button>
-    </div>
+    
     <script src="./mocap.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     
@@ -24,12 +21,29 @@
     <script src="./mocap/k3d/k3d_renderer.js"></script>
     <script src="./mocap/jquery/jquery-1.9.1.min.js"></script>
     <script src="./mocap/jquery/jquery-ui.min.js"></script>
-    <script src="./graph.js"></script>
     
 </head>
 <body>
     <div class="container">
-        <div class="show" id="show"></div>
+        <div class="right-side">
+            <div class="load">
+                <input type="file" id="dataFileInput" name="dataFileInput" accept=".data,.txt" class="inputButton" >
+                <label for="dataFileInput" class="loadButton">Choose file</label>
+                <button type="submit" class="loadButton" id="dataLoadButton">Load a file</button>
+            </div>
+            <div class="choose-hierarchy" id="choose-hierarchy">
+                <button class="loadButton" id="DTW-hierarchy" >DTW hierarchy</button>
+                <button class="loadButton" id="label-hierarchy" >Label hierarchy</button>
+            </div>
+            <div class="choose-label" id="choose-label">
+                <select id="select">
+
+                </select>
+                <button id="select-label" class="loadButton">Select</button>
+            </div>
+            <div class="show" id="show"></div>
+        </div>   
     </div>
+    <script src="./graph.js"></script>
 </body>
 </html>
