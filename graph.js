@@ -378,28 +378,30 @@ function deafultClusters(node,showWindow){
         const seeDTWCluster = document.createElement("button");
         seeDTWCluster.innerText = "See a DTW deafult cluster";
         seeDTWCluster.setAttribute("class", "loadButton");
-        seeDTWCluster.onclick = function(){setUpDeafultClusterDTW(node.defaultDTWCluster);}
+        seeDTWCluster.onclick = function(){setUpDeafultClusterDTW(node);}
         buttonContainer.appendChild(seeDTWCluster); 
         }
         if(node.defaultLabelCluster != null){
             const seeLabelCluster = document.createElement("button");
             seeLabelCluster.innerText = "See a Label deafult cluster";
             seeLabelCluster.setAttribute("class", "loadButton");
-            seeLabelCluster.onclick = function(){setUpDeafultClusterLabel(node.defaultLabelCluster);} 
+            seeLabelCluster.onclick = function(){setUpDeafultClusterLabel(node);} 
             buttonContainer.appendChild(seeLabelCluster); 
         }
         showWindow.appendChild(buttonContainer);
     }
 }
 
-function setUpDeafultClusterDTW(cluster){
+function setUpDeafultClusterDTW(node){
     isDTW = true;
-    graphLayer(cluster)
+    graphLayer(node.defaultDTWCluster)
+    clickNode(node)
 }
 
-function setUpDeafultClusterLabel(cluster){
+function setUpDeafultClusterLabel(node){
     isDTW = false;
-    graphLayer(cluster)
+    graphLayer(node.defaultLabelCluster)
+    clickNode(node)
 }
  
 /**
