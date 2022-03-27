@@ -34789,10 +34789,10 @@ var Mocap = (function (exports) {
 	 */
 	class VisualizationFactory {
 	    constructor () {
-	        this.addFillingKeyframes = true;
+	        this.addFillingKeyframes = false;
 	        this.addTimeScale = false;
 	        this.keyframeSelectionAlgorithm = KeyframeSelectionAlgorithmEnum.Decimation;
-	        this.labelFrames = true;
+	        this.labelFrames = false;
 	        this.useTrueTime = true;
 	        this.createZoomable = true;
 	        this.model = modelVicon;

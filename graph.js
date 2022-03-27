@@ -2,6 +2,8 @@
 var allNodes = {};
 var currentCluster = null;
 var isDTW = null;
+var maxDistanceInHierarchy = 1;
+const interpolator = d3.interpolate('green', 'red');
 
 /*
     Constats and variables for skeleton visualization from
@@ -28,7 +30,7 @@ class Node{
      * @param  {string} name node name
      * @param  {Cluster} defaultCluster default cluster of node (the cluster where node appears for the first time) 
      */
-    constructor(name,defaultCluster){
+    constructor(name){
         this.name = name;
         this.label = name.split('_')[1];
         this.image = null;
@@ -36,7 +38,8 @@ class Node{
         this.sameSequence = [];
         this.sameLabel= [];
         this.sequence = null;
-        this.defaultCluster = defaultCluster;
+        this.defaultDTWCluster = null;
+        this.defaultLabelCluster = null;
         this.currentGraphNodeVisualization = null;
     }
 }
@@ -51,21 +54,23 @@ class Cluster{
      * @param  {Cluster} upperCluster upper cluster of this cluster (cluster, where is pivot node of this cluster)
      * @param  {Number} depth depth of this cluster
      */
-    constructor(pivotNode,upperCluster,depth){
+    constructor(pivotNode,upperCluster,depth,number_in_branch,labelName){
         this.pivotNode = pivotNode;
         if(pivotNode == null){
-            this.name = "root";
+            this.name = "root" + labelName;
         }else{
-            this.name = pivotNode.name;
+            this.name = pivotNode.name + labelName;
         } 
         this.nodes = {};
         this.links = []
-        this.max = 0;
+        this.max = 1;
         this.labels = [];
         this.nextClusters = {};
         this.upperCluster = upperCluster;
         this.depth = depth;
         this.selectedNode = null;
+        this.nodes_in_branch = number_in_branch;
+        this.max_nodes_in_children_branches = 1;
     }
 }
 
@@ -128,11 +133,11 @@ function displayGraph(){
     const CHARGE_STRENGTH_VALUE = -250;
     const LINK_STRENGTH_VALUE = 1;
     const LINK_DISTANCE_NORMALIZING_VALUE = window.innerWidth/2;
-    const RADIUS_VALUE = NODE_WIDTH/1.2;
+    const RADIUS_VALUE = 85;
 
     var force = d3.forceSimulation(nodes)
         .force("charge", d3.forceManyBody().strength(CHARGE_STRENGTH_VALUE))
-        .force("link", d3.forceLink(links).distance(function(d){ return (d.distance / maxDistance) * LINK_DISTANCE_NORMALIZING_VALUE}).strength(LINK_STRENGTH_VALUE))
+        .force("link", d3.forceLink(links).distance(function(d){console.assert(maxDistance != 0); return (d.distance / maxDistance) * LINK_DISTANCE_NORMALIZING_VALUE}).strength(LINK_STRENGTH_VALUE))
         .force("center", d3.forceCenter(WIDTH/2,HEIGHT/2))
         .force("collide",d3.forceCollide().radius(RADIUS_VALUE));
 
@@ -147,10 +152,11 @@ function displayGraph(){
     var link = svg.selectAll(".link")
     .data(links)
     .enter().append("line")
+    .attr("stroke",function(d){return getColorLine(d.distance);})
     .attr("class", "link").lower();
 
-    var color = d3.scaleOrdinal(getColors(30))
-    .domain(labels);
+   // var color = d3.scaleOrdinal(getColors(30))
+    //.domain(labels);
 
     nodes.forEach(function(d){
         defs.append("pattern")
@@ -180,20 +186,12 @@ function displayGraph(){
         .attr("width", function(d) {return computeSizeNode(d,NODE_WIDTH)})
         .attr("height", function(d) {return computeSizeNode(d,NODE_HEIGHT)})
         .attr("fill", function(d) { return "url(#" + d.name  + ")"}  )
-        .attr("stroke", function(d) { d.currentGraphNodeVisualization = this; return color(d.label); })
         .on("click",function(d){setStrokeWidth(this); clickNode(d.srcElement.__data__)} )
         .on("dblclick",function(d){graphLayer(d.srcElement.__data__,true); })
-       
+        //.attr("stroke", function(d) { d.currentGraphNodeVisualization = this; return color(d.label); })
         n.append("text")
-        .text(function (d) { return sizeNode(d); })
-        .attr('width', 150)
-        .attr('height', 100)
-    
-        
-        
+        .text(function (d) { return sizeNode(d); })   
     }
-    
-      node.append("rect").attr("fill", "red")
     // https://observablehq.com/@martinascharrer/d3-force-directed-graph-with-small-circles-around-nodes  
     function drag(simulation){
         function dragstarted(event) {
@@ -238,6 +236,10 @@ function displayGraph(){
       .text(function(d) { return d.label; });
 }
 
+function getColorLine(distance){
+    return interpolator(distance/maxDistanceInHierarchy);
+}
+
 /**
  * Function for setting stroke after click on the node.
  * @param  {*} rectangle svg element of rectangle
@@ -255,7 +257,7 @@ function sizeNode(node){
     if(!(node.name in currentCluster.nextClusters)){
         return 0;
     }
-    return Object.keys(currentCluster.nextClusters[node.name].nodes).length
+    return currentCluster.nextClusters[node.name].nodes_in_branch;
 }
 
 /**
@@ -267,7 +269,8 @@ function sizeNode(node){
  * @returns {Number} computed size
  */
 function computeSizeNode(node,defaultSize){
-    return defaultSize + 3 * sizeNode(node);
+    console.assert(currentCluster.max_nodes_in_children_branches != 0);
+    return defaultSize + 100 * sizeNode(node) / currentCluster.max_nodes_in_children_branches;
 }
 
 /**
@@ -317,12 +320,12 @@ function appendImages(container,node,nodes,sorting = false){
         let smallImage = document.createElement("img");
         smallImage.setAttribute("name",n.name);
         smallImage.setAttribute("class", "small-image");
-        smallImage.setAttribute("src",n.visualization.children[1].src);
+        smallImage.setAttribute("src",n.image);
         smallImage.onclick = function(){mapNodeClick(this.name)};
         if(n.name == node.name){
             smallImage.setAttribute("style", "border: yellow solid 2.5px; margin-right: 10px; height: 60px; width: 80px;");
         }else{
-            smallImage.setAttribute("style", "border: black solid 1px; margin-right: 10px; height: 40px; width: 60px;");
+            smallImage.setAttribute("style", "border: #EA4C89 solid 1px; margin-right: 10px; height: 40px; width: 60px;");
         }
         container.appendChild(smallImage);
     }
@@ -344,42 +347,74 @@ function sortNames(a, b) {
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
-function sequenceContainerProcedure(node,showWindow){
+function actionInfoProcedure(node,showWindow){
     const sequencePattern = document.createElement("H4");
     const sequence = document.createElement("H4");
-    const sequencePattern2 = document.createElement("H4");
-    const sequenceContainer = document.createElement("div");
     sequencePattern.setAttribute("class", "patt");
     sequence.setAttribute("class", "val"); 
     sequencePattern.innerText = "Action:";
     sequence.innerText = node.name;
-    sequencePattern2.innerText = "Sequence " + node.name.split("_")[0] + ":";
     showWindow.appendChild(sequencePattern);
     showWindow.appendChild(sequence);
     nameContainerProcedure(node,showWindow);
-    showWindow.appendChild(document.createElement("br"));
     showWindow.appendChild(node.visualization);
-    depthContainerProcedure(showWindow);
-    upperClusterProcedure(node,showWindow);
-    thisClusterProcedure(showWindow);
-    sequenceContainer.appendChild(sequencePattern2);
+    
+}
+
+function sequenceContainerProcedure(node,showWindow){
+    const sequencePattern = document.createElement("H4");
+    const sequenceContainer = document.createElement("div");
+    sequencePattern.innerText = "Sequence " + node.name.split("_")[0] + ":";
+    sequenceContainer.appendChild(sequencePattern);
     appendImages(sequenceContainer,node,node.sameSequence,true);
     showWindow.appendChild(sequenceContainer);
 }
 
+function deafultClusters(node,showWindow){
+    if(!(node.name in currentCluster.nodes)){
+        buttonContainer = document.createElement("div")
+        buttonContainer.setAttribute("class","default-cluster-container")
+        if(node.defaultDTWCluster != null){
+        const seeDTWCluster = document.createElement("button");
+        seeDTWCluster.innerText = "See a DTW deafult cluster";
+        seeDTWCluster.setAttribute("class", "loadButton");
+        seeDTWCluster.onclick = function(){setUpDeafultClusterDTW(node.defaultDTWCluster);}
+        buttonContainer.appendChild(seeDTWCluster); 
+        }
+        if(node.defaultLabelCluster != null){
+            const seeLabelCluster = document.createElement("button");
+            seeLabelCluster.innerText = "See a Label deafult cluster";
+            seeLabelCluster.setAttribute("class", "loadButton");
+            seeLabelCluster.onclick = function(){setUpDeafultClusterLabel(node.defaultLabelCluster);} 
+            buttonContainer.appendChild(seeLabelCluster); 
+        }
+        showWindow.appendChild(buttonContainer);
+    }
+}
+
+function setUpDeafultClusterDTW(cluster){
+    isDTW = true;
+    graphLayer(cluster)
+}
+
+function setUpDeafultClusterLabel(cluster){
+    isDTW = false;
+    graphLayer(cluster)
+}
+ 
 /**
  * Procedure for setting upper cluster part in show window.
  * Used for node.
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
-function upperClusterProcedure(node,showWindow){
+function upperClusterProcedure(showWindow){
     if(currentCluster.depth != 1){
-        const seeAUpperCluster = document.createElement("H4");
+        const seeAUpperCluster = document.createElement("button");
         seeAUpperCluster.innerText = "See an upper cluster";
         seeAUpperCluster.setAttribute("class", "loadButton");
-        seeAUpperCluster.onclick = function(){graphLayer(node,false);}
-        showWindow.append(seeAUpperCluster);
+        seeAUpperCluster.onclick = function(){graphLayer(currentCluster.upperCluster,null);;}
+        showWindow.appendChild(seeAUpperCluster);
     }
 }
 
@@ -390,11 +425,19 @@ function upperClusterProcedure(node,showWindow){
  * @param  {*} showWindow show window 
  */
 function thisClusterProcedure(showWindow){
-    const seeACurrentCluster = document.createElement("H4");
+    const seeACurrentCluster = document.createElement("button");
     seeACurrentCluster.innerText = "See a this cluster";
     seeACurrentCluster.setAttribute("class", "loadButton");
     seeACurrentCluster.onclick = function(){clickCluster()};
-    showWindow.append(seeACurrentCluster);
+    showWindow.appendChild(seeACurrentCluster);
+}
+
+function clusterInfoContainers(node,showWindow){
+    depthContainerProcedure(showWindow);
+    upperClusterProcedure(showWindow);
+    thisClusterProcedure(showWindow);
+    deafultClusters(node,showWindow);
+    showWindow.appendChild(document.createElement("br"));
 }
 
 /**
@@ -427,7 +470,7 @@ function depthContainerProcedure(showWindow){
     const depth = document.createElement("H4");
     const depthContainer = document.createElement("div");
     depthPattern.setAttribute("class", "patt");
-    depthPattern.innerText = "Cluser depth: "; 
+    depthPattern.innerText = "Cluster depth: "; 
     depth.setAttribute("class", "val");
     depth.innerText = currentCluster.depth
     depthContainer.appendChild(depthPattern);
@@ -486,9 +529,11 @@ function animatedSequenceContainerProcedure(node,showWindow){
  * @param  {*} showWindow show window 
  */
 function createShowWindowNode(node,showWindow){
-    sequenceContainerProcedure(node,showWindow);
-    labelContainerProcedure(node,showWindow);
+    clusterInfoContainers(node,showWindow);
+    actionInfoProcedure(node,showWindow);
     animatedSequenceContainerProcedure(node,showWindow);
+    sequenceContainerProcedure(node,showWindow);
+    labelContainerProcedure(node,showWindow);  
 }
 
 /**
@@ -522,10 +567,10 @@ function createShowWindowClusterPivotContainerProcedure(showWindow){
     let pivotImage = document.createElement("img");
     pivotImage.setAttribute("name",pivot.name);
     pivotImage.setAttribute("class", "large-image");
-    pivotImage.setAttribute("src",pivot.visualization.children[1].src);
+    pivotImage.setAttribute("src",pivot.image);
     pivotImage.onclick = function() {mapNodeClick(this.name)};
     showWindow.appendChild(pivotImage);
-    const seeAUpperCluster = document.createElement("H4");
+    const seeAUpperCluster = document.createElement("button");
     seeAUpperCluster.innerText = "See an upper cluster";
     seeAUpperCluster.setAttribute("class", "loadButton");
     seeAUpperCluster.onclick = function(){graphLayer(currentCluster.upperCluster,null);}
@@ -562,7 +607,7 @@ function createShowWindowClusterNodesAppendImagesProcedure(showWindow){
         imageNodeName.setAttribute("class","small-image-cluster-pattern")
         smallImage.setAttribute("name",key);
         smallImage.setAttribute("class","small-image-cluster");
-        smallImage.setAttribute("src",currentCluster.nodes[key].visualization.children[1].src);
+        smallImage.setAttribute("src",currentCluster.nodes[key].image);
         smallImage.onclick = function(){mapNodeClickCluster(this.name)};
         imageContainer.setAttribute("class", "small-image-cluster-container");
         imageContainer.appendChild(imageNodeName);
@@ -580,10 +625,15 @@ function createShowWindowClusterNodesAppendImagesProcedure(showWindow){
  */
 function createShowWindowCluster(showWindow){
    createShowWindowClusterNameContainerProcedure(showWindow);
+   depthContainerProcedure(showWindow);
    createShowWindowClusterPivotContainerProcedure(showWindow);
    createShowWindowClusterNodesContainerProcedure(showWindow);
 }
 
+/**
+ * Function for deleting window.
+ * @param  {*} showWindow show window 
+ */
 function deleteContentOfWindow(showWindow){
     while (showWindow.firstChild) {
         showWindow.removeChild(showWindow.lastChild);
@@ -591,7 +641,7 @@ function deleteContentOfWindow(showWindow){
 }
 
 /**
- * Function for deleting current content of show window and calling function for setting widow of selected cluster.
+ * Function for setting window of selected cluster.
  */
 function clickCluster(){
     const showWindow = document.getElementById("show")
@@ -599,6 +649,11 @@ function clickCluster(){
     createShowWindowCluster(showWindow);  
 }
 
+/**
+ * Function for setting up label hierarchy.
+ * @param  {*} showWindow show window
+ * @param  {*} LabelHierarchy label hierarchy
+ */
 function setLabelHierarchy(showWindow,LabelHierarchy){
     deleteContentOfWindow(showWindow);
     clearAll();
@@ -617,16 +672,21 @@ function setLabelHierarchy(showWindow,LabelHierarchy){
     isDTW = false;
 }
 
-function createHierararchyButtons(DTWHierarchy,LabelHierarchy){
+/**
+ * Function for setting up hierarchy buttons.
+ * @param  {*} DTWHierarchy DTW hierarchy
+ * @param  {*} LabelHierarchy label hierarchy
+ */
+function createHierarchyButtons(DTWHierarchy,LabelHierarchy){
     const showWindow = document.getElementById("show")
     const buttonDiv = document.getElementById('choose-hierarchy');
     buttonDiv.style.display = "inline-block";
     const buttonDTWHierarchy = document.getElementById('DTW-hierarchy');
     const buttonLabelHierarchy = document.getElementById('label-hierarchy');
     buttonDTWHierarchy.onclick = function(){isDTW = true; graphLayer(DTWHierarchy,null)};
-    buttonLabelHierarchy.onclick = function(){setLabelHierarchy(showWindow,LabelHierarchy)};
-    
+    buttonLabelHierarchy.onclick = function(){setLabelHierarchy(showWindow,LabelHierarchy)};  
 }
+
 function processResponse(DTWHierarchyStringData,LabelHierarchyStringData){
     if (dataFileInput.files.length == 0) {
         console.log("No file selected!");
@@ -636,6 +696,11 @@ function processResponse(DTWHierarchyStringData,LabelHierarchyStringData){
     parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData);  
 }
 
+/**
+ * Function for parsing data and creating images.
+ * @param  {*} DTWHierarchyStringData DTW input data
+ * @param  {*} LabelHierarchyStringData label input data
+ */
 function parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData){
     let maxLength = 0;
     Mocap.loadDataFromFile(dataFileInput.files[0], (sequences) => {
@@ -666,12 +731,16 @@ function parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData){
                 }   
             }  
         }
-        createHierararchyButtons(DTWHierarchyClusters,LabelHierarchyClusters);
+        createHierarchyButtons(DTWHierarchyClusters,LabelHierarchyClusters);
     },null,20,3000);
 }
 
-function graphLayer(node,goingDeep){
-    
+/**
+ * Function for creating visualization for setting up current cluster.
+ * @param  {*} node input node or cluster
+ * @param  {*} goingDeep true if we are going down in hierarchy
+ */
+function graphLayer(node,goingDeep){ 
     if(goingDeep == null){
         currentCluster = node;
     }else{
@@ -692,35 +761,53 @@ function graphLayer(node,goingDeep){
         }   
     }
     clearAll();
+    const selectWindowLabel = document.getElementById('choose-label');
     if(isDTW){
-        const selectWindow = document.getElementById('select');
-        const selectWindowLabel = document.getElementById('choose-label');
-        deleteContentOfWindow(selectWindow);
+        //const selectWindow = document.getElementById('select');
+      
+        //deleteContentOfWindow(selectWindow);
         selectWindowLabel.style.display = "none";
+    }else{
+        selectWindowLabel.style.display = "block" 
     }
     displayGraph();
     clickCluster() 
 }
 
+/**
+ * Function for parsing label data.
+ * @param  {*} data input label data
+ */
 function LabelParser(data){
     let jsonData = JSON.parse(data);
     var depth = 1;
     let result = {};
     for(var key in jsonData){
-        result[key] = recursiveParse(jsonData[key],null,depth,null)
+        result[key] = recursiveParse(jsonData[key],null,depth,null,false,0," (Label " + key + ")")
     }
     return result;
 }
 
+/**
+ * Function for parsing DTW data.
+ * @param  {*} data input DTW data
+ */
 function DTWparser(data){
     let jsonData = JSON.parse(data);
     var depth = 1;
-    return recursiveParse(jsonData.root,null,depth,null); 
+    return recursiveParse(jsonData.root,null,depth,null,true,0,""); 
 }
 
-
-function recursiveParse(layerData,upperCluster,depth,pivotNode){
-    let currCluster = new Cluster(pivotNode,upperCluster,depth);
+/**
+ * Function for parsing data.
+ * @param  {*} layerData input data on current layer
+ * @param  {*} upperCluster upper cluster
+ * @param  {*} depth current depth
+ * @param  {*} pivotNode pivot node of current cluster
+ * @param  {*} dtw true if parsing DTW hierarchy
+ */
+function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_branch,label){
+    let currCluster = new Cluster(pivotNode,upperCluster,depth,number_in_branch,label);
     let clusterDistannces = {}
     for(let action of layerData){
         let distancesInFormat = {};
@@ -737,13 +824,30 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode){
         let node;
         if(action.name in allNodes){
             node = allNodes[action.name];
+            if(dtw){
+                if(node.defaultDTWCluster == null){
+                    node.defaultDTWCluster = currCluster;
+                }
+            }else{
+                if(node.defaultLabelCluster == null){
+                    node.defaultLabelCluster = currCluster;
+                }
+            }
         }else{
-            node = new Node(action.name,currCluster);
+            node = new Node(action.name);
+            if(dtw){
+                node.defaultDTWCluster = currCluster;
+            }else{
+                node.defaultLabelCluster = currCluster;   
+            }
             allNodes[action.name] = node;
         }
         currCluster.nodes[action.name] = node;
+        if(currCluster.max_nodes_in_children_branches < action.number_in_branch){
+            currCluster.max_nodes_in_children_branches = action.number_in_branch;
+        }
         if(typeof action.children !== 'undefined') {
-            currCluster.nextClusters[action.name] = recursiveParse(action.children,currCluster,depth + 1,node);
+            currCluster.nextClusters[action.name] = recursiveParse(action.children,currCluster,depth + 1,node,dtw,action.number_in_branch,label);
         }
         currCluster.labels.push(node.label);
     }
@@ -761,12 +865,16 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode){
             }    
             if(!currCluster.nodes[key2]){
                 continue;
+            }
+            if(dist > maxDistanceInHierarchy){
+                maxDistanceInHierarchy = dist;
             }     
             currCluster.links.push({source: currCluster.nodes[key], target : currCluster.nodes[key2], distance : dist, title: dist});
         }
     }  
     return currCluster; 
 }
+
 const dataFileInput = document.getElementById("dataFileInput");
 const loadButton = document.getElementById("dataLoadButton");
 loadButton.onclick = load;
