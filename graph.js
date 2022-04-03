@@ -1,10 +1,20 @@
-
+/*
+    Variables
+*/
 var allNodes = {};
 var currentCluster = null;
 var isDTW = null;
 var maxDistanceInHierarchy = 1;
-const interpolator = d3.interpolate('green', 'red');
+var hiddenLayerRightSide = document.getElementById("hiddden-layer-right-side");
 
+/*
+    Constats
+*/
+const interpolator = d3.interpolate('green', 'red');
+const visualizationWidth = 240; //240
+const visualizationHeight = 180
+const mapWidth = 0; 
+const mapHeight = 0;
 /*
     Constats and variables for skeleton visualization from
         Jan Sedmidubsky, Brno, Czech Republic, sedmidubsky@gmail.com
@@ -125,7 +135,6 @@ function displayGraph(){
     let nodes = Object.values(currentCluster.nodes);
     let links = currentCluster.links;
     let maxDistance = currentCluster.max;
-    let labels = currentCluster.labels;  
     const WIDTH = window.innerWidth - 450;
     const HEIGHT = window.innerHeight - 40;    
     const NODE_WIDTH = 80;
@@ -141,7 +150,7 @@ function displayGraph(){
         .force("center", d3.forceCenter(WIDTH/2,HEIGHT/2))
         .force("collide",d3.forceCollide().radius(RADIUS_VALUE));
 
-    var svg = d3.select(".container").append("svg:svg")
+    var svg = d3.select(".right-side").append("svg:svg")
         .attr("class","graph")
         .attr("id","graph")
         .attr("width", WIDTH)
@@ -185,12 +194,12 @@ function displayGraph(){
         n.append("rect")
         .attr("width", function(d) {return computeSizeNode(d,NODE_WIDTH)})
         .attr("height", function(d) {return computeSizeNode(d,NODE_HEIGHT)})
-        .attr("fill", function(d) { return "url(#" + d.name  + ")"}  )
-        .on("click",function(d){setStrokeWidth(this); clickNode(d.srcElement.__data__)} )
+        .attr("fill", function(d) {d.currentGraphNodeVisualization = this; return "url(#" + d.name  + ")"}  )
+        .on("click",function(d){clickNode(d.srcElement.__data__)} )
         .on("dblclick",function(d){graphLayer(d.srcElement.__data__,true); })
-        //.attr("stroke", function(d) { d.currentGraphNodeVisualization = this; return color(d.label); })
+        
         n.append("text")
-        .text(function (d) { return sizeNode(d); })   
+        .text(function (d) { let size = sizeNode(d); if(size > 0) return size; })   
     }
     // https://observablehq.com/@martinascharrer/d3-force-directed-graph-with-small-circles-around-nodes  
     function drag(simulation){
@@ -247,9 +256,9 @@ function getColorLine(distance){
  */
 function setStrokeWidth(rectangle){
     if(currentCluster.selectedNode != null){
-        d3.select(currentCluster.selectedNode).style("stroke-width", 2)
+        deleteStrokeWidth()
     }
-    d3.select(rectangle).style("stroke-width", 4)
+    d3.select(rectangle).style("stroke-width", 4).style("stroke", "yellow")
     currentCluster.selectedNode = rectangle;
 }
 
@@ -280,6 +289,7 @@ function computeSizeNode(node,defaultSize){
 function clickNode(node){
     const showWindow = document.getElementById("show");
     deleteContentOfWindow(showWindow);
+    setStrokeWidth(node.currentGraphNodeVisualization)
     createShowWindowNode(node,showWindow);  
 }
 
@@ -301,7 +311,6 @@ function mapNodeClick(name){
 function mapNodeClickCluster(name){
     let node = allNodes[name];
     clickNode(node);
-    setStrokeWidth(node.currentGraphNodeVisualization,node);
 }
 
 /**
@@ -361,6 +370,15 @@ function actionInfoProcedure(node,showWindow){
     
 }
 
+function appendVisualization(node,showWindow){
+    const smallVisualizationContainer = document.createElement("div")
+    smallVisualizationContainer.setAttribute("class","small-visualization-container")
+    smallVisualizationContainer.style.width = visualizationWidth + mapWidth
+    smallVisualizationContainer.style.height = Math.max(visualizationHeight, mapHeight)
+    smallVisualizationContainer.appendChild(node.image)
+    showWindow.appendChild(smallVisualizationContainer);
+
+}
 function sequenceContainerProcedure(node,showWindow){
     const sequencePattern = document.createElement("H4");
     const sequenceContainer = document.createElement("div");
@@ -370,8 +388,10 @@ function sequenceContainerProcedure(node,showWindow){
     showWindow.appendChild(sequenceContainer);
 }
 
-function deafultClusters(node,showWindow){
+function deafultClusters(node){
+    hideHiddenLayerRightSide()
     if(!(node.name in currentCluster.nodes)){
+        hiddenLayerRightSide.style.display = "block"
         buttonContainer = document.createElement("div")
         buttonContainer.setAttribute("class","default-cluster-container")
         if(node.defaultDTWCluster != null){
@@ -388,18 +408,20 @@ function deafultClusters(node,showWindow){
             seeLabelCluster.onclick = function(){setUpDeafultClusterLabel(node);} 
             buttonContainer.appendChild(seeLabelCluster); 
         }
-        showWindow.appendChild(buttonContainer);
+        hiddenLayerRightSide.appendChild(buttonContainer);
     }
 }
 
 function setUpDeafultClusterDTW(node){
     isDTW = true;
+    hideHiddenLayerRightSide()
     graphLayer(node.defaultDTWCluster)
     clickNode(node)
 }
 
 function setUpDeafultClusterLabel(node){
     isDTW = false;
+    hideHiddenLayerRightSide()
     graphLayer(node.defaultLabelCluster)
     clickNode(node)
 }
@@ -415,7 +437,7 @@ function upperClusterProcedure(showWindow){
         const seeAUpperCluster = document.createElement("button");
         seeAUpperCluster.innerText = "See an upper cluster";
         seeAUpperCluster.setAttribute("class", "loadButton");
-        seeAUpperCluster.onclick = function(){graphLayer(currentCluster.upperCluster,null);;}
+        seeAUpperCluster.onclick = function(){hideHiddenLayerRightSide(); graphLayer(currentCluster.upperCluster,null);;}
         showWindow.appendChild(seeAUpperCluster);
     }
 }
@@ -430,15 +452,20 @@ function thisClusterProcedure(showWindow){
     const seeACurrentCluster = document.createElement("button");
     seeACurrentCluster.innerText = "See a this cluster";
     seeACurrentCluster.setAttribute("class", "loadButton");
-    seeACurrentCluster.onclick = function(){clickCluster()};
+    seeACurrentCluster.onclick = function(){hideHiddenLayerRightSide();deleteStrokeWidth();clickCluster();};
     showWindow.appendChild(seeACurrentCluster);
+}
+
+function hideHiddenLayerRightSide(){
+    deleteContentOfWindow(hiddenLayerRightSide)
+    hiddenLayerRightSide.style.display = "none"
 }
 
 function clusterInfoContainers(node,showWindow){
     depthContainerProcedure(showWindow);
     upperClusterProcedure(showWindow);
-    thisClusterProcedure(showWindow);
-    deafultClusters(node,showWindow);
+    thisClusterProcedure(showWindow,node);
+    deafultClusters(node);
     showWindow.appendChild(document.createElement("br"));
 }
 
@@ -656,10 +683,7 @@ function clickCluster(){
  * @param  {*} showWindow show window
  * @param  {*} LabelHierarchy label hierarchy
  */
-function setLabelHierarchy(showWindow,LabelHierarchy){
-    deleteContentOfWindow(showWindow);
-    clearAll();
-    const chooseLabelWindow = document.getElementById("choose-label");
+function setLabelHierarchy(LabelHierarchy){
     const selectSelect = document.getElementById("select");
     const button = document.getElementById("select-label");
     button.onclick  = function(){
@@ -670,6 +694,13 @@ function setLabelHierarchy(showWindow,LabelHierarchy){
         selectOption.innerText = key;
         selectSelect.appendChild(selectOption);
     }
+}
+
+function showLabelHierarchy(showWindow){
+    deleteContentOfWindow(showWindow);
+    hideHiddenLayerRightSide();
+    clearAll();
+    const chooseLabelWindow = document.getElementById("choose-label");
     chooseLabelWindow.style.display = "inline-block";
     isDTW = false;
 }
@@ -685,8 +716,9 @@ function createHierarchyButtons(DTWHierarchy,LabelHierarchy){
     buttonDiv.style.display = "inline-block";
     const buttonDTWHierarchy = document.getElementById('DTW-hierarchy');
     const buttonLabelHierarchy = document.getElementById('label-hierarchy');
-    buttonDTWHierarchy.onclick = function(){isDTW = true; graphLayer(DTWHierarchy,null)};
-    buttonLabelHierarchy.onclick = function(){setLabelHierarchy(showWindow,LabelHierarchy)};  
+    buttonDTWHierarchy.onclick = function(){isDTW = true; hideHiddenLayerRightSide(); graphLayer(DTWHierarchy,null)};
+    setLabelHierarchy(LabelHierarchy)
+    buttonLabelHierarchy.onclick = function(){showLabelHierarchy(showWindow)};  
 }
 
 function processResponse(DTWHierarchyStringData,LabelHierarchyStringData){
@@ -716,9 +748,9 @@ function parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData){
             if(maxLength < sequence.length){
                 maxLength = sequence.length;
             }
-            let visualizationElement = factory.createVisualization(sequence, 80*3,60*3, 75, 75);
+            let visualizationElement = factory.createVisualization(sequence, visualizationWidth,visualizationHeight, mapWidth, mapHeight);
             allNodes[sequence[0].split(' ')[2].trim()].sequence = sequence;
-            allNodes[sequence[0].split(' ')[2].trim()].image = visualizationElement.children[1].src;
+            allNodes[sequence[0].split(' ')[2].trim()].image = visualizationElement.getElementsByTagName("img")[0].src;
             allNodes[sequence[0].split(' ')[2].trim()].visualization = visualizationElement;
         }
         for(var key in allNodes){
@@ -737,6 +769,9 @@ function parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData){
     },null,20,3000);
 }
 
+function deleteStrokeWidth(){
+    d3.select(currentCluster.selectedNode).style("stroke-width", 2).style("stroke", "#EA4C89");
+}
 /**
  * Function for creating visualization for setting up current cluster.
  * @param  {*} node input node or cluster
@@ -747,16 +782,16 @@ function graphLayer(node,goingDeep){
         currentCluster = node;
     }else{
         if(goingDeep){
-            if(Object.keys(currentCluster.nextClusters).length == 0){
+            if(Object.keys(currentCluster.nextClusters).length == 0 || !(node.name in currentCluster.nextClusters)){
                 return;
             }
             if(currentCluster.selectedNode != null){
-                d3.select(currentCluster.selectedNode).style("stroke-width", 2);
+                deleteStrokeWidth()
             }
             currentCluster = currentCluster.nextClusters[node.name];
         }else{
             if(currentCluster.selectedNode != null){
-                d3.select(currentCluster.selectedNode).style("stroke-width", 2);
+                deleteStrokeWidth()
             }
             currentCluster = currentCluster.upperCluster;
         
@@ -848,7 +883,7 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
         if(currCluster.max_nodes_in_children_branches < action.number_in_branch){
             currCluster.max_nodes_in_children_branches = action.number_in_branch;
         }
-        if(typeof action.children !== 'undefined') {
+        if(typeof action.children !== 'undefined' && action.children.length > 1) {
             currCluster.nextClusters[action.name] = recursiveParse(action.children,currCluster,depth + 1,node,dtw,action.number_in_branch,label);
         }
         currCluster.labels.push(node.label);

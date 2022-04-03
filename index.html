@@ -25,10 +25,10 @@
 </head>
 <body>
     <div class="container">
-        <div class="right-side">
+        <div class="left-side">
             <div class="load">
                 <input type="file" id="dataFileInput" name="dataFileInput" accept=".data,.txt" class="inputButton" >
-                <label for="dataFileInput" class="loadButton">Choose file</label>
+                <label for="dataFileInput" class="loadButton">Choose a file</label>
                 <button type="submit" class="loadButton" id="dataLoadButton">Load a file</button>
             </div>
             <div class="choose-hierarchy" id="choose-hierarchy">
@@ -36,12 +36,13 @@
                 <button class="loadButton" id="label-hierarchy" >Label hierarchy</button>
             </div>
             <div class="choose-label" id="choose-label">
-                <select id="select">
-
-                </select>
+                <select id="select"></select>
                 <button id="select-label" class="loadButton">Select</button>
             </div>
             <div class="show" id="show"></div>
+        </div>
+        <div class="right-side">
+            <div id="hiddden-layer-right-side"></div>
         </div>   
     </div>
     <script src="./graph.js"></script>
