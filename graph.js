@@ -6,6 +6,7 @@ var currentCluster = null;
 var isDTW = null;
 var maxDistanceInHierarchy = 1;
 var hiddenLayerRightSide = document.getElementById("hiddden-layer-right-side");
+var rightSide = document.getElementById("right-side");
 
 /*
     Constats
@@ -108,6 +109,10 @@ function callAjax(url,url2,callback){
 }
 
 function clearAll(){
+    const button = document.getElementById("upper-cluster");
+    if(button != null){
+        button.remove();
+    }
     d3.select("svg").remove();
 }
 
@@ -150,7 +155,7 @@ function displayGraph(){
         .force("center", d3.forceCenter(WIDTH/2,HEIGHT/2))
         .force("collide",d3.forceCollide().radius(RADIUS_VALUE));
 
-    var svg = d3.select(".right-side").append("svg:svg")
+    var svg = d3.select("#right-side").append("svg:svg")
         .attr("class","graph")
         .attr("id","graph")
         .attr("width", WIDTH)
@@ -289,6 +294,7 @@ function computeSizeNode(node,defaultSize){
 function clickNode(node){
     const showWindow = document.getElementById("show");
     deleteContentOfWindow(showWindow);
+    console.log(node.currentGraphNodeVisualization)
     setStrokeWidth(node.currentGraphNodeVisualization)
     createShowWindowNode(node,showWindow);  
 }
@@ -334,7 +340,11 @@ function appendImages(container,node,nodes,sorting = false){
         if(n.name == node.name){
             smallImage.setAttribute("style", "border: yellow solid 2.5px; margin-right: 10px; height: 60px; width: 80px;");
         }else{
-            smallImage.setAttribute("style", "border: #EA4C89 solid 1px; margin-right: 10px; height: 40px; width: 60px;");
+            if(n.name in currentCluster.nodes){
+                smallImage.setAttribute("style", "border: #89E039 solid 1px; margin-right: 10px; height: 40px; width: 60px;");
+            }else{
+                smallImage.setAttribute("style", "border: #EA4C89 solid 1px; margin-right: 10px; height: 40px; width: 60px;");
+            }
         }
         container.appendChild(smallImage);
     }
@@ -388,12 +398,20 @@ function sequenceContainerProcedure(node,showWindow){
     showWindow.appendChild(sequenceContainer);
 }
 
+function setUpHiddenLayerRightSideHeader(buttonContainer){
+    const hiddenLayerRightSideHeader = document.createElement("h3");
+    hiddenLayerRightSideHeader.setAttribute("id","hidden-layer-right-side-header")
+    hiddenLayerRightSideHeader.innerText = "The chosen action is not part of the previously displayed cluster. Which cluster would you like to display?"
+    buttonContainer.appendChild(hiddenLayerRightSideHeader)
+}
+
 function deafultClusters(node){
     hideHiddenLayerRightSide()
     if(!(node.name in currentCluster.nodes)){
         hiddenLayerRightSide.style.display = "block"
         buttonContainer = document.createElement("div")
         buttonContainer.setAttribute("class","default-cluster-container")
+        setUpHiddenLayerRightSideHeader(buttonContainer);
         if(node.defaultDTWCluster != null){
         const seeDTWCluster = document.createElement("button");
         seeDTWCluster.innerText = "See a DTW deafult cluster";
@@ -432,13 +450,14 @@ function setUpDeafultClusterLabel(node){
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
-function upperClusterProcedure(showWindow){
+function upperClusterProcedure(){
     if(currentCluster.depth != 1){
         const seeAUpperCluster = document.createElement("button");
         seeAUpperCluster.innerText = "See an upper cluster";
         seeAUpperCluster.setAttribute("class", "loadButton");
-        seeAUpperCluster.onclick = function(){hideHiddenLayerRightSide(); graphLayer(currentCluster.upperCluster,null);;}
-        showWindow.appendChild(seeAUpperCluster);
+        const pivotNode = currentCluster.pivotNode
+        seeAUpperCluster.onclick = function(){hideHiddenLayerRightSide(); graphLayer(currentCluster.upperCluster,null);clickNode(pivotNode);}
+        rightSide.appendChild(seeAUpperCluster);
     }
 }
 
@@ -456,6 +475,7 @@ function thisClusterProcedure(showWindow){
     showWindow.appendChild(seeACurrentCluster);
 }
 
+
 function hideHiddenLayerRightSide(){
     deleteContentOfWindow(hiddenLayerRightSide)
     hiddenLayerRightSide.style.display = "none"
@@ -463,7 +483,7 @@ function hideHiddenLayerRightSide(){
 
 function clusterInfoContainers(node,showWindow){
     depthContainerProcedure(showWindow);
-    upperClusterProcedure(showWindow);
+    //upperClusterProcedure(showWindow);
     thisClusterProcedure(showWindow,node);
     deafultClusters(node);
     showWindow.appendChild(document.createElement("br"));
@@ -517,6 +537,7 @@ function labelContainerProcedure(node,showWindow){
     const labelPattern = document.createElement("H4");
     labelPattern.innerText = "Next in label " + node.label + ":";  
     let labelContainer = document.createElement("div");
+    labelContainer.setAttribute("id","label-container")
     labelContainer.appendChild(labelPattern);
     appendImages(labelContainer,node,node.sameLabel);
     showWindow.appendChild(labelContainer);
@@ -602,9 +623,10 @@ function createShowWindowClusterPivotContainerProcedure(showWindow){
     const seeAUpperCluster = document.createElement("button");
     seeAUpperCluster.innerText = "See an upper cluster";
     seeAUpperCluster.setAttribute("class", "loadButton");
-    seeAUpperCluster.onclick = function(){graphLayer(currentCluster.upperCluster,null);}
+    seeAUpperCluster.setAttribute("id", "upper-cluster");
+    seeAUpperCluster.onclick = function(){graphLayer(currentCluster.upperCluster,null);clickNode(pivot)}
     const breakLine = document.createElement("br")
-    showWindow.append(seeAUpperCluster);
+    rightSide.append(seeAUpperCluster);
     showWindow.append(breakLine);
 }
 
@@ -726,7 +748,10 @@ function processResponse(DTWHierarchyStringData,LabelHierarchyStringData){
         console.log("No file selected!");
         return;
         }
-    allNodes = {}
+    allNodes = {};
+    currentCluster = null;
+    isDTW = null;
+    maxDistanceInHierarchy = 1;
     parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData);  
 }
 
@@ -739,7 +764,8 @@ function parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData){
     let maxLength = 0;
     Mocap.loadDataFromFile(dataFileInput.files[0], (sequences) => {
         let DTWHierarchyClusters = DTWparser(DTWHierarchyStringData);
-        let LabelHierarchyClusters = LabelParser(LabelHierarchyStringData);
+        //let LabelHierarchyClusters = LabelParser(LabelHierarchyStringData);
+        let LabelHierarchyClusters = {};
         let factory = new Mocap.VisualizationFactory();
         for(let sequence of sequences){
             if(!(sequence[0].split(' ')[2].trim() in allNodes)){

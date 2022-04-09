@@ -31,14 +31,14 @@ text {
   width: 9.4rem;
   height: 6.25rem;
 }
-.left-side{
+#left-side{
   border-right: black solid 0.16rem;
   padding-left: 0.6rem;
   min-height: 100vh;
   width: 25rem;
   float: left;
 }
-.right-side{
+#right-side{
   min-height: 100vh;
   width: 100%;
 }
@@ -48,7 +48,6 @@ text {
   min-height: 100vh;
   width: 100%;
   background: rgba(0, 0, 0,0.7);
-  
   z-index: 1;
 }
 .choose-hierarchy{
@@ -187,13 +186,20 @@ rect{
   display: none;
 }
 .default-cluster-container{
-  display: flexbox;
+  display: flex;
   flex-direction: column;
-  position: absolute; 
+  align-items: center;
+  position: absolute;
+  width: 80%; 
   top: 50%;
-  right: 50%;
 }
 svg{
   position: absolute;
   z-index: 0;
+}
+#hidden-layer-right-side-header{
+  color: #FFFFFF;
+}
+#label-container{
+  margin-bottom: 20px;
 }

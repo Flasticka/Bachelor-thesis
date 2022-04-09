@@ -25,7 +25,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="left-side">
+        <div id="left-side">
             <div class="load">
                 <input type="file" id="dataFileInput" name="dataFileInput" accept=".data,.txt" class="inputButton" >
                 <label for="dataFileInput" class="loadButton">Choose a file</label>
@@ -41,8 +41,9 @@
             </div>
             <div class="show" id="show"></div>
         </div>
-        <div class="right-side">
-            <div id="hiddden-layer-right-side"></div>
+        <div id="right-side">
+            <div id="hiddden-layer-right-side">
+            </div>
         </div>   
     </div>
     <script src="./graph.js"></script>
