@@ -1,5 +1,5 @@
 /*
-    Variables
+* Variables
 */
 var allNodes = {};
 var currentCluster = null;
@@ -9,16 +9,19 @@ var hiddenLayerRightSide = document.getElementById("hiddden-layer-right-side");
 var rightSide = document.getElementById("right-side");
 
 /*
-    Constats
+* Constats
 */
 const interpolator = d3.interpolate('green', 'red');
-const visualizationWidth = 240; //240
-const visualizationHeight = 180
+const visualizationWidth = 240;
+const visualizationHeight = 180;
 const mapWidth = 0; 
 const mapHeight = 0;
+const dataFileInput = document.getElementById("dataFileInput");
+const loadButton = document.getElementById("dataLoadButton");
+loadButton.onclick = load;
 /*
-    Constats and variables for skeleton visualization from
-        Jan Sedmidubsky, Brno, Czech Republic, sedmidubsky@gmail.com
+* Constats and variables for skeleton visualization from
+*  Jan Sedmidubsky, Brno, Czech Republic, sedmidubsky@gmail.com
 */
 const bonesVicon = [
     {a: 0, b: 1}, {a: 1, b: 2}, {a: 2, b: 3}, {a: 3, b: 4}, {a: 4, b: 5}, // leg
@@ -75,7 +78,7 @@ class Cluster{
         this.nodes = {};
         this.links = []
         this.max = 1;
-        this.labels = [];
+        this.labels = {};
         this.nextClusters = {};
         this.upperCluster = upperCluster;
         this.depth = depth;
@@ -85,11 +88,24 @@ class Cluster{
     }
 }
 
+/**
+ * Procedure for loading hierarchies.
+ */
+ function load() {
+    callAjax("output.txt","output2.txt",processResponse);
+}
+
+/**
+ * Procedure for reading hierarchies from files.
+ * @param  {String} url first file
+ * @param  {String} url2 second file
+ * @param  {*} callback callback function
+ */
 function callAjax(url,url2,callback){
     var result1;
     var result2;
     var xmlhttp = new XMLHttpRequest();
-    xmlhttp.onreadystatechange = function(){
+    xmlhttp.onreadystatechange = () => {
         if (xmlhttp.readyState == 4 && xmlhttp.status == 200){
             result1 = xmlhttp.responseText;
             var xmlhttp2 = new XMLHttpRequest();
@@ -108,12 +124,12 @@ function callAjax(url,url2,callback){
     
 }
 
+/**
+ * Procedure for clearing all elements from right side except hidden layer.
+ */
 function clearAll(){
-    const button = document.getElementById("upper-cluster");
-    if(button != null){
-        button.remove();
-    }
-    d3.select("svg").remove();
+    rightSide.innerHTML = '';
+    rightSide.appendChild(hiddenLayerRightSide);
 }
 
 /**
@@ -123,18 +139,18 @@ function clearAll(){
  * @returns {Array} array of colors
  */
 function getColors(numOfColors){
-    let colors = []
+    let colors = [];
     let start = 0;
     let step = 1 / (numOfColors - 1);
     while(start < 1){
-        colors.push(d3.interpolateTurbo(start))
+        colors.push(d3.interpolateTurbo(start));
         start += step;
     }
     return colors;
 }
 
 /**
- * Function for displaying graph of slected cluster.
+ * Procedure for displaying graph of slected cluster.
  */
 function displayGraph(){
     let nodes = Object.values(currentCluster.nodes);
@@ -151,7 +167,11 @@ function displayGraph(){
 
     var force = d3.forceSimulation(nodes)
         .force("charge", d3.forceManyBody().strength(CHARGE_STRENGTH_VALUE))
-        .force("link", d3.forceLink(links).distance(function(d){console.assert(maxDistance != 0); return (d.distance / maxDistance) * LINK_DISTANCE_NORMALIZING_VALUE}).strength(LINK_STRENGTH_VALUE))
+        .force("link", d3.forceLink(links).distance((d) =>{
+            console.assert(maxDistance != 0); 
+            return (d.distance / maxDistance) * LINK_DISTANCE_NORMALIZING_VALUE;
+        })
+        .strength(LINK_STRENGTH_VALUE))
         .force("center", d3.forceCenter(WIDTH/2,HEIGHT/2))
         .force("collide",d3.forceCollide().radius(RADIUS_VALUE));
 
@@ -166,13 +186,15 @@ function displayGraph(){
     var link = svg.selectAll(".link")
     .data(links)
     .enter().append("line")
-    .attr("stroke",function(d){return getColorLine(d.distance);})
+    .attr("stroke",(d) => {
+        return getColorLine(d.distance);
+    })
     .attr("class", "link").lower();
 
    // var color = d3.scaleOrdinal(getColors(30))
     //.domain(labels);
 
-    nodes.forEach(function(d){
+    nodes.forEach((d) => {
         defs.append("pattern")
         .attr("id",d.name)
         .attr("height", "100%")
@@ -181,7 +203,7 @@ function displayGraph(){
         .append("image")
         .attr("height", 1)
         .attr("width", 1)
-        .attr("xlink:href", d.image)
+        .attr("xlink:href", d.image);
     });
     var node = svg.selectAll(".node")
       .data(nodes)
@@ -193,19 +215,38 @@ function displayGraph(){
     function setUpNode(n){
         n.append("rect")
         .attr("fill", "white")
-        .attr("width", function(d) {return computeSizeNode(d,NODE_WIDTH)})
-        .attr("height", function(d) {return computeSizeNode(d,NODE_HEIGHT)})
+        .attr("width", (d) => {
+            return computeSizeNode(d,NODE_WIDTH);
+        })
+        .attr("height", (d) => {
+            return computeSizeNode(d,NODE_HEIGHT);
+        });
 
         n.append("rect")
-        .attr("width", function(d) {return computeSizeNode(d,NODE_WIDTH)})
-        .attr("height", function(d) {return computeSizeNode(d,NODE_HEIGHT)})
-        .attr("fill", function(d) {d.currentGraphNodeVisualization = this; return "url(#" + d.name  + ")"}  )
-        .on("click",function(d){clickNode(d.srcElement.__data__)} )
-        .on("dblclick",function(d){graphLayer(d.srcElement.__data__,true); })
+        .attr("width",(d) => {
+            return computeSizeNode(d,NODE_WIDTH);
+        })
+        .attr("height", (d) => {
+            return computeSizeNode(d,NODE_HEIGHT);
+        })
+        .attr("fill", function(d) {
+            d.currentGraphNodeVisualization = this; 
+            return "url(#" + d.name  + ")";
+        })
+        .on("click",(d) => {
+            clickNode(d.srcElement.__data__);
+        })
+        .on("dblclick",(d) => {
+            graphLayer(d.srcElement.__data__,true); 
+        });
         
         n.append("text")
-        .text(function (d) { let size = sizeNode(d); if(size > 0) return size; })   
+        .text((d) => {
+            let size = sizeNode(d);
+            if(size > 0) return size;
+        });
     }
+
     // https://observablehq.com/@martinascharrer/d3-force-directed-graph-with-small-circles-around-nodes  
     function drag(simulation){
         function dragstarted(event) {
@@ -232,41 +273,89 @@ function displayGraph(){
     }
 
     force.on("tick", function() {
-        link.attr("x1", function(d) { return d.source.x; })
-            .attr("y1", function(d) { return d.source.y; })
-            .attr("x2", function(d) { return d.target.x; })
-            .attr("y2", function(d) { return d.target.y; });
+        link.attr("x1", (d) => { 
+            return d.source.x; 
+        })
+        .attr("y1", (d) => { 
+            return d.source.y; 
+        })
+        .attr("x2", (d) => { 
+            return d.target.x; 
+        })
+        .attr("y2", (d) => {
+            return d.target.y; 
+        });
 
-        node.selectAll("rect").attr("x", function(d) { let computedWidth = computeSizeNode(d,NODE_WIDTH)/2; d.x = Math.max(computedWidth, Math.min(WIDTH - computedWidth, d.x )); return d.x - computedWidth} )
-            .attr("y", function(d) { let computedHeight = computeSizeNode(d,NODE_HEIGHT)/2 ; d.y = Math.max(computedHeight, Math.min(HEIGHT - computedHeight, d.y )); return d.y - computedHeight} );
-        node.selectAll("text").attr("x", function(d) { let computedWidth = computeSizeNode(d,NODE_WIDTH)/2; d.x = Math.max(computedWidth, Math.min(WIDTH - computedWidth, d.x )); return d.x - 2} )
-            .attr("y", function(d) { let computedHeight = computeSizeNode(d,NODE_HEIGHT)/2; d.y = Math.max(computedHeight, Math.min(HEIGHT - computedHeight, d.y )); return d.y - computedHeight + computedHeight / 2} );
+        node.selectAll("rect").attr("x", (d) => {
+            let computedWidth = computeSizeNode(d,NODE_WIDTH)/2; 
+            d.x = Math.max(computedWidth, Math.min(WIDTH - computedWidth, d.x )); 
+            return d.x - computedWidth;
+        })
+        .attr("y", (d) => { 
+            let computedHeight = computeSizeNode(d,NODE_HEIGHT)/2;
+            d.y = Math.max(computedHeight, Math.min(HEIGHT - computedHeight, d.y ));
+            return d.y - computedHeight;
+        });
+
+        node.selectAll("text").attr("x", (d) => {
+            let computedWidth = computeSizeNode(d,NODE_WIDTH)/2;
+            d.x = Math.max(computedWidth, Math.min(WIDTH - computedWidth, d.x )); 
+            return d.x - 2;
+        })
+        .attr("y", (d) => {
+            let computedHeight = computeSizeNode(d,NODE_HEIGHT)/2;
+            d.y = Math.max(computedHeight, Math.min(HEIGHT - computedHeight, d.y ));
+            return d.y - computedHeight + computedHeight / 2;
+        });
     });
 
     link.append("title")
-      .text(function(d) { return d.title; });
+    .text((d) => {
+          return d.title;
+    });
 
     node.append("title")
-      .text(function(d) { return d.label; });
+    .text((d) => {
+        return d.label;
+    });
 }
 
+/**
+ * Function for setting up the color of line.
+ * @param  {Number} distance distance 
+ * 
+ * @return  {*} color of line
+ */
 function getColorLine(distance){
     return interpolator(distance/maxDistanceInHierarchy);
 }
 
 /**
- * Function for setting stroke after click on the node.
+ * Procedure for setting stroke after click on the node.
  * @param  {*} rectangle svg element of rectangle
  * @param  {Node} node slected node
  */
 function setStrokeWidth(rectangle){
     if(currentCluster.selectedNode != null){
-        deleteStrokeWidth()
+        deleteStrokeWidth();
     }
-    d3.select(rectangle).style("stroke-width", 4).style("stroke", "yellow")
+    d3.select(rectangle).style("stroke-width", 4).style("stroke", "yellow");
     currentCluster.selectedNode = rectangle;
 }
 
+/**
+ * Procedure for deleting stroke.
+ */
+function deleteStrokeWidth(){
+    d3.select(currentCluster.selectedNode).style("stroke-width", 2).style("stroke", "#EA4C89");
+}
+
+/**
+ * Function for computing numbers of nodes in branch.
+ * @param  {Node} node node
+ * 
+ * @return  {Number} numbers of nodes in branch
+ */
 function sizeNode(node){
     if(!(node.name in currentCluster.nextClusters)){
         return 0;
@@ -275,7 +364,7 @@ function sizeNode(node){
 }
 
 /**
- * Function for computing size of node's cluster.
+ * Function for computing size of nodes.
  * Value is than used to set up size of node's svg element.
  * @param  {Node} node slected node
  * @param  {Number} defaultSize default size
@@ -288,19 +377,18 @@ function computeSizeNode(node,defaultSize){
 }
 
 /**
- * Function for deleting current content of show window and calling function for setting widow of selected node.
+ * Procedure for deleting current content of show window and calling function for setting widow of selected node.
  * @param  {Node} node slected node
  */
 function clickNode(node){
     const showWindow = document.getElementById("show");
     deleteContentOfWindow(showWindow);
-    console.log(node.currentGraphNodeVisualization)
-    setStrokeWidth(node.currentGraphNodeVisualization)
+    setStrokeWidth(node.currentGraphNodeVisualization);
     createShowWindowNode(node,showWindow);  
 }
 
 /**
- * Function for slecting node by name.
+ * Procedure for slecting node by name.
  * Used when on node is clicked in graph visualization.
  * @param  {String} name node name
  */
@@ -310,18 +398,7 @@ function mapNodeClick(name){
 }
 
 /**
- * Function for slecting node by name.
- * Used when on node is clicked in cluster show window visualization.
- * @param  {String} name node name
- */
-function mapNodeClickCluster(name){
-    let node = allNodes[name];
-    clickNode(node);
-}
-
-/**
- * Function for appending small images of nodes.
- * Used for node.
+ * Procedure for appending small images of nodes.
  * @param  {*} container html container, where nodes will be appended
  * @param  {Node} node current node
  * @param  {*} nodes nodes to be appended
@@ -336,7 +413,9 @@ function appendImages(container,node,nodes,sorting = false){
         smallImage.setAttribute("name",n.name);
         smallImage.setAttribute("class", "small-image");
         smallImage.setAttribute("src",n.image);
-        smallImage.onclick = function(){mapNodeClick(this.name)};
+        smallImage.onclick = function(){
+            mapNodeClick(this.name);
+        };
         if(n.name == node.name){
             smallImage.setAttribute("style", "border: yellow solid 2.5px; margin-right: 10px; height: 60px; width: 80px;");
         }else{
@@ -355,6 +434,8 @@ function appendImages(container,node,nodes,sorting = false){
  * Sorting by position in sequence.
  * @param  {Node} a first node
  * @param  {Node} b second node
+ * 
+ * @return result < 0 a is lower than b
  */
 function sortNames(a, b) {
     return a.name.split("_")[2] - b.name.split("_")[2];
@@ -362,7 +443,6 @@ function sortNames(a, b) {
 
 /**
  * Procedure for setting sequence part in show window.
- * Used for node.
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
@@ -380,15 +460,26 @@ function actionInfoProcedure(node,showWindow){
     
 }
 
+/**
+ * Procedure for setting sequence part in show window.
+ * @param  {Node} node selected node
+ * @param  {*} showWindow show window 
+ */
 function appendVisualization(node,showWindow){
-    const smallVisualizationContainer = document.createElement("div")
-    smallVisualizationContainer.setAttribute("class","small-visualization-container")
-    smallVisualizationContainer.style.width = visualizationWidth + mapWidth
-    smallVisualizationContainer.style.height = Math.max(visualizationHeight, mapHeight)
-    smallVisualizationContainer.appendChild(node.image)
+    const smallVisualizationContainer = document.createElement("div");
+    smallVisualizationContainer.setAttribute("class","small-visualization-container");
+    smallVisualizationContainer.style.width = visualizationWidth + mapWidth;
+    smallVisualizationContainer.style.height = Math.max(visualizationHeight, mapHeight);
+    smallVisualizationContainer.appendChild(node.image);
     showWindow.appendChild(smallVisualizationContainer);
 
 }
+
+/**
+ * Procedure for setting up next in sequence part in show window.
+ * @param  {Node} node selected node
+ * @param  {*} showWindow show window 
+ */
 function sequenceContainerProcedure(node,showWindow){
     const sequencePattern = document.createElement("H4");
     const sequenceContainer = document.createElement("div");
@@ -398,100 +489,83 @@ function sequenceContainerProcedure(node,showWindow){
     showWindow.appendChild(sequenceContainer);
 }
 
+/**
+ * Procedure for setting sequence part in show window.
+ * @param  {*} buttonContainer button container, html element
+ */
 function setUpHiddenLayerRightSideHeader(buttonContainer){
     const hiddenLayerRightSideHeader = document.createElement("h3");
-    hiddenLayerRightSideHeader.setAttribute("id","hidden-layer-right-side-header")
-    hiddenLayerRightSideHeader.innerText = "The chosen action is not part of the previously displayed cluster. Which cluster would you like to display?"
-    buttonContainer.appendChild(hiddenLayerRightSideHeader)
+    hiddenLayerRightSideHeader.setAttribute("id","hidden-layer-right-side-header");
+    hiddenLayerRightSideHeader.innerText = "The chosen action is not part of the previously displayed cluster. Which cluster would you like to display?";
+    buttonContainer.appendChild(hiddenLayerRightSideHeader);
 }
 
+/**
+ * Procedure for setting up default clusters in hidden layer.
+ * @param  {Node} node selected node
+ */
 function deafultClusters(node){
-    hideHiddenLayerRightSide()
+    hideHiddenLayerRightSide();
     if(!(node.name in currentCluster.nodes)){
-        hiddenLayerRightSide.style.display = "block"
-        buttonContainer = document.createElement("div")
-        buttonContainer.setAttribute("class","default-cluster-container")
+        hiddenLayerRightSide.style.display = "block";
+        buttonContainer = document.createElement("div");
+        buttonContainer.setAttribute("class","default-cluster-container");
         setUpHiddenLayerRightSideHeader(buttonContainer);
         if(node.defaultDTWCluster != null){
         const seeDTWCluster = document.createElement("button");
         seeDTWCluster.innerText = "See a DTW deafult cluster";
         seeDTWCluster.setAttribute("class", "loadButton");
-        seeDTWCluster.onclick = function(){setUpDeafultClusterDTW(node);}
+        seeDTWCluster.onclick = () =>{
+            setUpDeafultClusterDTW(node);
+        }
         buttonContainer.appendChild(seeDTWCluster); 
         }
         if(node.defaultLabelCluster != null){
             const seeLabelCluster = document.createElement("button");
             seeLabelCluster.innerText = "See a Label deafult cluster";
             seeLabelCluster.setAttribute("class", "loadButton");
-            seeLabelCluster.onclick = function(){setUpDeafultClusterLabel(node);} 
+            seeLabelCluster.onclick = () => {
+                setUpDeafultClusterLabel(node);
+            } 
             buttonContainer.appendChild(seeLabelCluster); 
         }
         hiddenLayerRightSide.appendChild(buttonContainer);
     }
 }
 
+/**
+ * Procedure for setting up default clusters of DTW in hidden layer.
+ * @param  {Node} node selected node
+ */
 function setUpDeafultClusterDTW(node){
     isDTW = true;
-    hideHiddenLayerRightSide()
-    graphLayer(node.defaultDTWCluster)
-    clickNode(node)
+    hideHiddenLayerRightSide();
+    graphLayer(node.defaultDTWCluster);
+    clickNode(node);
 }
 
+/**
+ * Procedure for setting up default clusters of Label in hidden layer.
+ * @param  {Node} node selected node
+ */
 function setUpDeafultClusterLabel(node){
     isDTW = false;
-    hideHiddenLayerRightSide()
-    graphLayer(node.defaultLabelCluster)
-    clickNode(node)
-}
- 
-/**
- * Procedure for setting upper cluster part in show window.
- * Used for node.
- * @param  {Node} node selected node
- * @param  {*} showWindow show window 
- */
-function upperClusterProcedure(){
-    if(currentCluster.depth != 1){
-        const seeAUpperCluster = document.createElement("button");
-        seeAUpperCluster.innerText = "See an upper cluster";
-        seeAUpperCluster.setAttribute("class", "loadButton");
-        const pivotNode = currentCluster.pivotNode
-        seeAUpperCluster.onclick = function(){hideHiddenLayerRightSide(); graphLayer(currentCluster.upperCluster,null);clickNode(pivotNode);}
-        rightSide.appendChild(seeAUpperCluster);
-    }
+    hideHiddenLayerRightSide();
+    graphLayer(node.defaultLabelCluster);
+    clickNode(node);
 }
 
 /**
- * Procedure for setting this cluster part in show window.
- * Used for node.
+ * Procedure for hidding hidden layer.
  * @param  {Node} node selected node
- * @param  {*} showWindow show window 
  */
-function thisClusterProcedure(showWindow){
-    const seeACurrentCluster = document.createElement("button");
-    seeACurrentCluster.innerText = "See a this cluster";
-    seeACurrentCluster.setAttribute("class", "loadButton");
-    seeACurrentCluster.onclick = function(){hideHiddenLayerRightSide();deleteStrokeWidth();clickCluster();};
-    showWindow.appendChild(seeACurrentCluster);
-}
-
-
 function hideHiddenLayerRightSide(){
-    deleteContentOfWindow(hiddenLayerRightSide)
-    hiddenLayerRightSide.style.display = "none"
-}
-
-function clusterInfoContainers(node,showWindow){
-    depthContainerProcedure(showWindow);
-    //upperClusterProcedure(showWindow);
-    thisClusterProcedure(showWindow,node);
-    deafultClusters(node);
-    showWindow.appendChild(document.createElement("br"));
+    deleteContentOfWindow(hiddenLayerRightSide);
+    hiddenLayerRightSide.style.display = "none";
 }
 
 /**
  * Procedure for setting name part in show window.
- * Used for node.
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
@@ -510,26 +584,52 @@ function nameContainerProcedure(node,showWindow){
 
 /**
  * Procedure for setting depth part in show window.
- * Used for node.
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
-function depthContainerProcedure(showWindow){
-    const depthPattern = document.createElement("H4");
-    const depth = document.createElement("H4");
-    const depthContainer = document.createElement("div");
-    depthPattern.setAttribute("class", "patt");
-    depthPattern.innerText = "Cluster depth: "; 
-    depth.setAttribute("class", "val");
-    depth.innerText = currentCluster.depth
+function depthContainerProcedure(clusterInfoContainer){
+    const depthPattern = document.createElement("H5");
+    const depth = document.createElement("H5"); 
+    const depthContainer = document.createElement("div"); 
+    depthContainer.setAttribute("class", "depth-container");
+    depthPattern.innerText = "Cluster depth: ";  
+    depth.innerText = currentCluster.depth;
     depthContainer.appendChild(depthPattern);
     depthContainer.appendChild(depth);
-    showWindow.appendChild(depthContainer);
+    clusterInfoContainer.appendChild(depthContainer);
+}
+
+/**
+ * Procedure for setting label information of cluster.
+ * @param  {*} clusterInfoContainer container, html element
+ */
+function labelsIncluster(clusterInfoContainer){
+    const labelInfoUL = document.createElement("ul");
+    const labelPattern = document.createElement("H5");
+    labelPattern.innerText = "Labels in cluster: ";
+    clusterInfoContainer.appendChild(labelPattern);
+    let orderedKeys = Object.keys(currentCluster.labels).map(x => parseInt(x)).sort((a,b) => a - b);
+    for(let key of orderedKeys){
+        const labelInfoLI = document.createElement("ul");
+        labelInfoLI.innerText = key + ": " + currentCluster.labels[key];
+        labelInfoUL.appendChild(labelInfoLI);
+    }
+    clusterInfoContainer.appendChild(labelInfoUL);
+}
+
+/**
+ * Procedure for setting information about cluster.
+ */
+function setUpClusterInfo(){
+    const clusterInfoContainer = document.createElement("div");
+    clusterInfoContainer.setAttribute("id", "cluster-info");
+    rightSide.appendChild(clusterInfoContainer);
+    depthContainerProcedure(clusterInfoContainer);
+    labelsIncluster(clusterInfoContainer);
 }
 
 /**
  * Procedure for setting label part in show window.
- * Used for node.
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
@@ -537,7 +637,7 @@ function labelContainerProcedure(node,showWindow){
     const labelPattern = document.createElement("H4");
     labelPattern.innerText = "Next in label " + node.label + ":";  
     let labelContainer = document.createElement("div");
-    labelContainer.setAttribute("id","label-container")
+    labelContainer.setAttribute("id","label-container");
     labelContainer.appendChild(labelPattern);
     appendImages(labelContainer,node,node.sameLabel);
     showWindow.appendChild(labelContainer);
@@ -545,7 +645,6 @@ function labelContainerProcedure(node,showWindow){
 
 /**
  * Procedure for setting animated sequence part in show window.
- * Used for node.
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
@@ -574,12 +673,11 @@ function animatedSequenceContainerProcedure(node,showWindow){
 
 /**
  * Function for creating show window for node.
- * Used for node.
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
 function createShowWindowNode(node,showWindow){
-    clusterInfoContainers(node,showWindow);
+    deafultClusters(node);
     actionInfoProcedure(node,showWindow);
     animatedSequenceContainerProcedure(node,showWindow);
     sequenceContainerProcedure(node,showWindow);
@@ -587,102 +685,27 @@ function createShowWindowNode(node,showWindow){
 }
 
 /**
- * Procedure for setting name part in show window.
- * Used for cluster.
- * @param  {*} showWindow show window 
- */
-function createShowWindowClusterNameContainerProcedure(showWindow){
-    const namePattern = document.createElement("H4");
-    const name  = document.createElement("H4");
-    const nameContainer = document.createElement("div");
-    namePattern.setAttribute("class", "patt");
-    namePattern.innerText = "Cluster of node:"; 
-    name.setAttribute("class", "val");
-    name.innerText = currentCluster.name
-    nameContainer.appendChild(namePattern);
-    nameContainer.appendChild(name);
-    showWindow.appendChild(nameContainer);
-}
-
-/**
  * Procedure for setting pivot part in show window.
- * Used for cluster.
- * @param  {*} showWindow show window 
  */
-function createShowWindowClusterPivotContainerProcedure(showWindow){
-    if(currentCluster.pivotNode == null){
+
+function setUpperClusterButton(){
+    let pivot = currentCluster.pivotNode;
+    if(pivot == null){
         return;
     }
-    let pivot = currentCluster.pivotNode;
-    let pivotImage = document.createElement("img");
-    pivotImage.setAttribute("name",pivot.name);
-    pivotImage.setAttribute("class", "large-image");
-    pivotImage.setAttribute("src",pivot.image);
-    pivotImage.onclick = function() {mapNodeClick(this.name)};
-    showWindow.appendChild(pivotImage);
     const seeAUpperCluster = document.createElement("button");
     seeAUpperCluster.innerText = "See an upper cluster";
     seeAUpperCluster.setAttribute("class", "loadButton");
     seeAUpperCluster.setAttribute("id", "upper-cluster");
-    seeAUpperCluster.onclick = function(){graphLayer(currentCluster.upperCluster,null);clickNode(pivot)}
-    const breakLine = document.createElement("br")
+    seeAUpperCluster.onclick = () => {
+        graphLayer(currentCluster.upperCluster,null);
+        clickNode(pivot);
+    };
     rightSide.append(seeAUpperCluster);
-    showWindow.append(breakLine);
 }
 
 /**
- * Procedure for setting nodes part in show window.
- * Used for cluster.
- * @param  {*} showWindow show window 
- */
-function createShowWindowClusterNodesContainerProcedure(showWindow){
-    const nodesPattern = document.createElement("H4");
-    nodesPattern.setAttribute("class", "patt");
-    nodesPattern.innerText = "Nodes in cluster (" + Object.keys(currentCluster.nodes).length + "):";
-    showWindow.appendChild(nodesPattern);
-    createShowWindowClusterNodesAppendImagesProcedure(showWindow);
-}
-
-/**
- * Function for appending small images of nodes.
- * Used for cluster.
- * @param  {*} showWindow show window
- */
-function createShowWindowClusterNodesAppendImagesProcedure(showWindow){
-    showWindow.appendChild(document.createElement("br"));
-    for (let key of Object.keys(currentCluster.nodes)){
-        const imageNodeName = document.createElement("H4");
-        const smallImage = document.createElement("img");
-        const imageContainer = document.createElement("div");
-        imageNodeName.innerText = key + " :";
-        imageNodeName.setAttribute("class","small-image-cluster-pattern")
-        smallImage.setAttribute("name",key);
-        smallImage.setAttribute("class","small-image-cluster");
-        smallImage.setAttribute("src",currentCluster.nodes[key].image);
-        smallImage.onclick = function(){mapNodeClickCluster(this.name)};
-        imageContainer.setAttribute("class", "small-image-cluster-container");
-        imageContainer.appendChild(imageNodeName);
-        imageContainer.appendChild(smallImage);
-        showWindow.appendChild(imageContainer);
-        showWindow.appendChild(imageContainer);
-        showWindow.appendChild(document.createElement("br"));
-    }
-}
-
-/**
- * Function for creating show window for cluster.
- * Used for cluster.
- * @param  {*} showWindow show window 
- */
-function createShowWindowCluster(showWindow){
-   createShowWindowClusterNameContainerProcedure(showWindow);
-   depthContainerProcedure(showWindow);
-   createShowWindowClusterPivotContainerProcedure(showWindow);
-   createShowWindowClusterNodesContainerProcedure(showWindow);
-}
-
-/**
- * Function for deleting window.
+ * Procedure for deleting window.
  * @param  {*} showWindow show window 
  */
 function deleteContentOfWindow(showWindow){
@@ -692,25 +715,17 @@ function deleteContentOfWindow(showWindow){
 }
 
 /**
- * Function for setting window of selected cluster.
- */
-function clickCluster(){
-    const showWindow = document.getElementById("show")
-    deleteContentOfWindow(showWindow);
-    createShowWindowCluster(showWindow);  
-}
-
-/**
- * Function for setting up label hierarchy.
- * @param  {*} showWindow show window
+ * Procedure for setting up label hierarchy.
  * @param  {*} LabelHierarchy label hierarchy
  */
 function setLabelHierarchy(LabelHierarchy){
+    const showWindow = document.getElementById("show");
     const selectSelect = document.getElementById("select");
     const button = document.getElementById("select-label");
-    button.onclick  = function(){
+    button.onclick  = () => {
+        deleteContentOfWindow(showWindow);
         graphLayer(LabelHierarchy[selectSelect.value],null);
-    }
+    };
     for(let key in LabelHierarchy){
         const selectOption = document.createElement("option")
         selectOption.innerText = key;
@@ -718,6 +733,10 @@ function setLabelHierarchy(LabelHierarchy){
     }
 }
 
+/**
+ * Procedure for setting up show of thelabel hierarchie.
+ * @param  {*} showWindow show window
+ */
 function showLabelHierarchy(showWindow){
     deleteContentOfWindow(showWindow);
     hideHiddenLayerRightSide();
@@ -728,44 +747,53 @@ function showLabelHierarchy(showWindow){
 }
 
 /**
- * Function for setting up hierarchy buttons.
+ * Procedure for setting up hierarchy buttons.
  * @param  {*} DTWHierarchy DTW hierarchy
  * @param  {*} LabelHierarchy label hierarchy
  */
 function createHierarchyButtons(DTWHierarchy,LabelHierarchy){
-    const showWindow = document.getElementById("show")
+    const showWindow = document.getElementById("show");
     const buttonDiv = document.getElementById('choose-hierarchy');
     buttonDiv.style.display = "inline-block";
     const buttonDTWHierarchy = document.getElementById('DTW-hierarchy');
     const buttonLabelHierarchy = document.getElementById('label-hierarchy');
-    buttonDTWHierarchy.onclick = function(){isDTW = true; hideHiddenLayerRightSide(); graphLayer(DTWHierarchy,null)};
+    buttonDTWHierarchy.onclick = () => {
+        isDTW = true; 
+        hideHiddenLayerRightSide(); 
+        deleteContentOfWindow(showWindow); 
+        graphLayer(DTWHierarchy,null);
+    };
     setLabelHierarchy(LabelHierarchy)
     buttonLabelHierarchy.onclick = function(){showLabelHierarchy(showWindow)};  
 }
 
-function processResponse(DTWHierarchyStringData,LabelHierarchyStringData){
-    if (dataFileInput.files.length == 0) {
+/**
+ * Procedure for responsing after files load.
+ * @param  {String} DTWHierarchyStringData DTW hierarchy data
+ * @param  {String} labelHierarchyStringData label hierarchy data
+ */
+function processResponse(DTWHierarchyStringData,labelHierarchyStringData){
+    if (dataFileInput.files.length == 0){
         console.log("No file selected!");
         return;
-        }
+    }
     allNodes = {};
     currentCluster = null;
     isDTW = null;
     maxDistanceInHierarchy = 1;
-    parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData);  
+    parseClusterData(DTWHierarchyStringData,labelHierarchyStringData);  
 }
 
 /**
- * Function for parsing data and creating images.
+ * Procedure for parsing data and creating images.
  * @param  {*} DTWHierarchyStringData DTW input data
- * @param  {*} LabelHierarchyStringData label input data
+ * @param  {*} labelHierarchyStringData label input data
  */
-function parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData){
+function parseClusterData(DTWHierarchyStringData,labelHierarchyStringData){
     let maxLength = 0;
     Mocap.loadDataFromFile(dataFileInput.files[0], (sequences) => {
         let DTWHierarchyClusters = DTWparser(DTWHierarchyStringData);
-        //let LabelHierarchyClusters = LabelParser(LabelHierarchyStringData);
-        let LabelHierarchyClusters = {};
+        let LabelHierarchyClusters = LabelParser(labelHierarchyStringData);
         let factory = new Mocap.VisualizationFactory();
         for(let sequence of sequences){
             if(!(sequence[0].split(' ')[2].trim() in allNodes)){
@@ -795,11 +823,8 @@ function parseClusterData(DTWHierarchyStringData,LabelHierarchyStringData){
     },null,20,3000);
 }
 
-function deleteStrokeWidth(){
-    d3.select(currentCluster.selectedNode).style("stroke-width", 2).style("stroke", "#EA4C89");
-}
 /**
- * Function for creating visualization for setting up current cluster.
+ * Procedure for creating visualization for setting up current cluster.
  * @param  {*} node input node or cluster
  * @param  {*} goingDeep true if we are going down in hierarchy
  */
@@ -812,12 +837,12 @@ function graphLayer(node,goingDeep){
                 return;
             }
             if(currentCluster.selectedNode != null){
-                deleteStrokeWidth()
+                deleteStrokeWidth();
             }
             currentCluster = currentCluster.nextClusters[node.name];
         }else{
             if(currentCluster.selectedNode != null){
-                deleteStrokeWidth()
+                deleteStrokeWidth();
             }
             currentCluster = currentCluster.upperCluster;
         
@@ -826,20 +851,20 @@ function graphLayer(node,goingDeep){
     clearAll();
     const selectWindowLabel = document.getElementById('choose-label');
     if(isDTW){
-        //const selectWindow = document.getElementById('select');
-      
-        //deleteContentOfWindow(selectWindow);
         selectWindowLabel.style.display = "none";
     }else{
-        selectWindowLabel.style.display = "block" 
+        selectWindowLabel.style.display = "block"; 
     }
     displayGraph();
-    clickCluster() 
+    setUpperClusterButton();
+    setUpClusterInfo();
 }
 
 /**
  * Function for parsing label data.
  * @param  {*} data input label data
+ * 
+ * @return parsed label data
  */
 function LabelParser(data){
     let jsonData = JSON.parse(data);
@@ -854,6 +879,8 @@ function LabelParser(data){
 /**
  * Function for parsing DTW data.
  * @param  {*} data input DTW data
+ * 
+ * @return parsed DTW data
  */
 function DTWparser(data){
     let jsonData = JSON.parse(data);
@@ -862,26 +889,28 @@ function DTWparser(data){
 }
 
 /**
- * Function for parsing data.
+ * Function for parsing data into clusters.
  * @param  {*} layerData input data on current layer
  * @param  {*} upperCluster upper cluster
- * @param  {*} depth current depth
+ * @param  {Number} depth current depth
  * @param  {*} pivotNode pivot node of current cluster
- * @param  {*} dtw true if parsing DTW hierarchy
+ * @param  {Boolean} dtw true if parsing DTW hierarchy
+ * 
+ * @return new cluster
  */
 function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_branch,label){
     let currCluster = new Cluster(pivotNode,upperCluster,depth,number_in_branch,label);
-    let clusterDistannces = {}
+    let clusterDistannces = {};
     for(let action of layerData){
         let distancesInFormat = {};
-        let distances = []
+        let distances = [];
         for(let distance of action.distances){
             let splitLineSecondtLayer = distance.split(':');
             if(parseFloat(splitLineSecondtLayer[1]) > currCluster.max){
                 currCluster.max = parseFloat(splitLineSecondtLayer[1]);
             }
             distancesInFormat[splitLineSecondtLayer[0]] = parseFloat(splitLineSecondtLayer[1]);
-            distances.push(parseFloat(splitLineSecondtLayer[1]))
+            distances.push(parseFloat(splitLineSecondtLayer[1]));
         }
         clusterDistannces[action.name] = [distancesInFormat,distances];
         let node;
@@ -912,11 +941,11 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
         if(typeof action.children !== 'undefined' && action.children.length > 1) {
             currCluster.nextClusters[action.name] = recursiveParse(action.children,currCluster,depth + 1,node,dtw,action.number_in_branch,label);
         }
-        currCluster.labels.push(node.label);
+        currCluster.labels[node.label] = (currCluster.labels[node.label] || 0) + 1;
     }
     for(let key in clusterDistannces){
-        let distancesInFormat = clusterDistannces[key][0]
-        let distances = clusterDistannces[key][1] 
+        let distancesInFormat = clusterDistannces[key][0];
+        let distances = clusterDistannces[key][1];
         distances.sort(function(a,b){return a - b});
         for(var key2 in distancesInFormat){
             if(currCluster.nodes[key] == currCluster.nodes[key2]){
@@ -925,7 +954,7 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
             var dist = distancesInFormat[key2];
             if(distances.length > 3 && dist > distances[2]){
                 continue;
-            }    
+            }   
             if(!currCluster.nodes[key2]){
                 continue;
             }
@@ -938,14 +967,12 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
     return currCluster; 
 }
 
-const dataFileInput = document.getElementById("dataFileInput");
-const loadButton = document.getElementById("dataLoadButton");
-loadButton.onclick = load;
-
-function load() {
-    callAjax("output.txt","output2.txt",processResponse);
-}
-
+/**
+ * Function for parsing sequnce into cords k3d.
+ * @param  {*} sequence sequence
+ * 
+ * @return sequence parsed into cords
+ */
 function parseInToCords(sequence){
     let result = [];
     for (let index = 2; index < sequence.length; index++) {
@@ -968,15 +995,37 @@ function parseInToCords(sequence){
     return result;
 }
 
+/**
+ * Procedure for timeouting frames.
+ * @param  {*} controller controller
+ * @param  {*} frames frames of sequence
+ * @param  {Number} frame index of frame
+ * @param  {*} button button html element
+ * @param  {*} slider slider html element#
+ * @param  {Number} marginGap margin between two timers
+ * @param  {Number} fps fps
+ */
 function showInTime(controller,frames,frame,button,slider,marginGap,fps){
         showFrame(controller,frames,frame);
         slider.style.marginLeft = (parseFloat(slider.style.marginLeft) + marginGap) + "px";
         if(button.option == "runAnimation"){
-            setTimeout(function(){frameQueue(controller,frames,frame+Math.floor(fps/10),button,slider,marginGap,fps);},100);  
+            setTimeout(() => {
+                frameQueue(controller,frames,frame+Math.floor(fps/10),button,slider,marginGap,fps);
+            },100);  
         }
         
 }
-   
+
+/**
+ * Procedures for selecting frames from queue.
+ * @param  {*} controller controller
+ * @param  {*} frames frames of sequence
+ * @param  {Number} frame index of frame
+ * @param  {*} button button html element
+ * @param  {*} slider slider html element#
+ * @param  {Number} marginGap margin between two timers
+ * @param  {Number} fps fps
+ */
 function frameQueue(controller,frames,frame,button,slider,marginGap,fps){
     if(frame < frames.length){
         showInTime(controller,frames,frame,button,slider,marginGap,fps);    
@@ -984,7 +1033,7 @@ function frameQueue(controller,frames,frame,button,slider,marginGap,fps){
         button.setAttribute("id","run-sequence-button");
         button.option = "stopAnimation";
         slider.style.marginLeft = '0px';
-    } 
+    }
 }
 /*
     Author of this functions:
@@ -1032,7 +1081,7 @@ function setFrame(sequence,canvas,button,slider,times){
     canvas.addEventListener('mousemove',onCanvasMouseMove);
     canvas.addEventListener('mouseup',onCanvasMouseUp);
     canvas.addEventListener('mouseleave',onCanvasMouseUp);
-    button.addEventListener('click', function(){
+    button.addEventListener('click', () => {
         if(button.option == "runAnimation"){
             button.setAttribute("id","run-sequence-button");
             button.option = "stopAnimation";
@@ -1040,7 +1089,9 @@ function setFrame(sequence,canvas,button,slider,times){
             slider.style.marginLeft = '0px';
             button.setAttribute("id","stop-sequence-button");
             button.option = "runAnimation";
-            setTimeout(function(){frameQueue(controller,frames,Math.floor(FPS / 10),button,slider,marginGap,FPS)},10);
+            setTimeout(() => {
+                frameQueue(controller,frames,Math.floor(FPS / 10),button,slider,marginGap,FPS)
+            },10);
         }
         
     },);
@@ -1066,11 +1117,11 @@ function setFrame(sequence,canvas,button,slider,times){
     }
     var marginGap =  285 / (Math.floor(frames.length / Math.floor(FPS/10)));
     var numOfTimes = Math.floor(frames.length / FPS );
-    var marginTimesGap = (300 - ((frames.length % FPS) * (300 /  frames.length))) / numOfTimes ;
+    var marginTimesGap = (300 - ((frames.length % FPS) * (300 /  frames.length))) / numOfTimes;
     let firstTime = document.createElement("span");
     firstTime.innerText = "00:00";
     times.appendChild(firstTime);
-    for (let i = 1; i < Math.ceil(frames.length / FPS); i++) {
+    for(let i = 1; i < Math.ceil(frames.length / FPS); i++){
         let current = document.createElement("span");
         current.style.marginLeft = marginTimesGap - 32.54 + 'px';
         current.innerText = "00:" + i.toString().padStart(2, '0');
