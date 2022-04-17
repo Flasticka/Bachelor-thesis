@@ -8,10 +8,12 @@ var maxDistanceInHierarchy = 1;
 var hiddenLayerRightSide = document.getElementById("hiddden-layer-right-side");
 var rightSide = document.getElementById("right-side");
 
+
 /*
 * Constats
 */
 const interpolator = d3.interpolate('green', 'red');
+const factory = new Mocap.VisualizationFactory();
 const visualizationWidth = 240;
 const visualizationHeight = 180;
 const mapWidth = 0; 
@@ -92,7 +94,7 @@ class Cluster{
  * Procedure for loading hierarchies.
  */
  function load() {
-    callAjax("output.txt","output2.txt",processResponse);
+    callAjax("output.txt","output2.txt","json.txt",processResponse);
 }
 
 /**
@@ -101,27 +103,14 @@ class Cluster{
  * @param  {String} url2 second file
  * @param  {*} callback callback function
  */
-function callAjax(url,url2,callback){
-    var result1;
-    var result2;
-    var xmlhttp = new XMLHttpRequest();
-    xmlhttp.onreadystatechange = () => {
-        if (xmlhttp.readyState == 4 && xmlhttp.status == 200){
-            result1 = xmlhttp.responseText;
-            var xmlhttp2 = new XMLHttpRequest();
-            xmlhttp2.onreadystatechange = function(){
-            if (xmlhttp2.readyState == 4 && xmlhttp2.status == 200){
-                result2 = xmlhttp2.responseText;
-                callback(result1,result2);
-            }   
-        }
-            xmlhttp2.open("GET", url2, true);
-            xmlhttp2.send();
-        }
-    }
-    xmlhttp.open("GET", url, true);
-    xmlhttp.send();
-    
+async function callAjax(url,url2,url3,callback){
+    const response = await fetch(url); 
+    const result1 = await response.text();
+    const response2 = await fetch(url2);
+    const result2 = await response2.text();
+    const response3 = await fetch(url3);
+    const result3 = await response3.text(); 
+    callback(result1,result2,result3); 
 }
 
 /**
@@ -564,17 +553,23 @@ function hideHiddenLayerRightSide(){
     hiddenLayerRightSide.style.display = "none";
 }
 
+function setUpVisulaization(node){
+    if(node.visualization == null){
+        node.visualization = factory.createVisualization(node.sequence, visualizationWidth,visualizationHeight, mapWidth, mapHeight);
+    }
+}
 /**
  * Procedure for setting name part in show window.
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
  */
 function nameContainerProcedure(node,showWindow){
+    setUpVisulaization(node)
     const namePattern = document.createElement("H4");
     const name  = document.createElement("H4");
     const nameContainer = document.createElement("div");
     namePattern.setAttribute("class", "patt");
-    namePattern.innerText = "Name:"; 
+    namePattern.innerText = "Category name:"; 
     name.setAttribute("class", "val");
     name.innerText = node.visualization.className.split("-")[1];
     nameContainer.appendChild(namePattern);
@@ -772,7 +767,7 @@ function createHierarchyButtons(DTWHierarchy,LabelHierarchy){
  * @param  {String} DTWHierarchyStringData DTW hierarchy data
  * @param  {String} labelHierarchyStringData label hierarchy data
  */
-function processResponse(DTWHierarchyStringData,labelHierarchyStringData){
+function processResponse(DTWHierarchyStringData,labelHierarchyStringData,jsonData){
     if (dataFileInput.files.length == 0){
         console.log("No file selected!");
         return;
@@ -781,20 +776,27 @@ function processResponse(DTWHierarchyStringData,labelHierarchyStringData){
     currentCluster = null;
     isDTW = null;
     maxDistanceInHierarchy = 1;
-    parseClusterData(DTWHierarchyStringData,labelHierarchyStringData);  
+    parseClusterData(DTWHierarchyStringData,labelHierarchyStringData,JSON.parse(jsonData));  
 }
+
 
 /**
  * Procedure for parsing data and creating images.
  * @param  {*} DTWHierarchyStringData DTW input data
  * @param  {*} labelHierarchyStringData label input data
  */
-function parseClusterData(DTWHierarchyStringData,labelHierarchyStringData){
+function parseClusterData(DTWHierarchyStringData,labelHierarchyStringData,jsonData){
     let maxLength = 0;
     Mocap.loadDataFromFile(dataFileInput.files[0], (sequences) => {
         let DTWHierarchyClusters = DTWparser(DTWHierarchyStringData);
         let LabelHierarchyClusters = LabelParser(labelHierarchyStringData);
-        let factory = new Mocap.VisualizationFactory();
+        for (const key in jsonData) {
+            if(!(key in allNodes)){
+                continue;
+            }
+            allNodes[key].image = jsonData[key]
+        }
+        //console.log(allNodes)
         for(let sequence of sequences){
             if(!(sequence[0].split(' ')[2].trim() in allNodes)){
                 continue;
@@ -802,10 +804,7 @@ function parseClusterData(DTWHierarchyStringData,labelHierarchyStringData){
             if(maxLength < sequence.length){
                 maxLength = sequence.length;
             }
-            let visualizationElement = factory.createVisualization(sequence, visualizationWidth,visualizationHeight, mapWidth, mapHeight);
             allNodes[sequence[0].split(' ')[2].trim()].sequence = sequence;
-            allNodes[sequence[0].split(' ')[2].trim()].image = visualizationElement.getElementsByTagName("img")[0].src;
-            allNodes[sequence[0].split(' ')[2].trim()].visualization = visualizationElement;
         }
         for(var key in allNodes){
             for (var key2 in allNodes) {
