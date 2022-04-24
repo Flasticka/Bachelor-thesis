@@ -7,6 +7,7 @@ var isDTW = null;
 var maxDistanceInHierarchy = 1;
 var hiddenLayerRightSide = document.getElementById("hiddden-layer-right-side");
 var rightSide = document.getElementById("right-side");
+var labelSubTreeContainer = null;
 
 
 /*
@@ -70,7 +71,7 @@ class Cluster{
      * @param  {Cluster} upperCluster upper cluster of this cluster (cluster, where is pivot node of this cluster)
      * @param  {Number} depth depth of this cluster
      */
-    constructor(pivotNode,upperCluster,depth,number_in_branch,labelName){
+    constructor(pivotNode,upperCluster,depth,number_in_branch,labelName,labels_in_branch){
         this.pivotNode = pivotNode;
         if(pivotNode == null){
             this.name = "root" + labelName;
@@ -87,6 +88,7 @@ class Cluster{
         this.selectedNode = null;
         this.nodes_in_branch = number_in_branch;
         this.max_nodes_in_children_branches = 1;
+        this.labels_in_branch = labels_in_branch;
     }
 }
 
@@ -373,7 +375,8 @@ function clickNode(node){
     const showWindow = document.getElementById("show");
     deleteContentOfWindow(showWindow);
     setStrokeWidth(node.currentGraphNodeVisualization);
-    createShowWindowNode(node,showWindow);  
+    createShowWindowNode(node,showWindow);
+    labelsInSubTreeOfCluster(node); 
 }
 
 /**
@@ -598,10 +601,10 @@ function depthContainerProcedure(clusterInfoContainer){
  * Procedure for setting label information of cluster.
  * @param  {*} clusterInfoContainer container, html element
  */
-function labelsIncluster(clusterInfoContainer){
+function labelsInCurrentCluster(clusterInfoContainer){
     const labelInfoUL = document.createElement("ul");
     const labelPattern = document.createElement("H5");
-    labelPattern.innerText = "Labels in cluster: ";
+    labelPattern.innerText = "Labels in current cluster: ";
     clusterInfoContainer.appendChild(labelPattern);
     let orderedKeys = Object.keys(currentCluster.labels).map(x => parseInt(x)).sort((a,b) => a - b);
     for(let key of orderedKeys){
@@ -612,6 +615,36 @@ function labelsIncluster(clusterInfoContainer){
     clusterInfoContainer.appendChild(labelInfoUL);
 }
 
+function labelsInSubTreeOfCluster(node){
+    deleteContentOfWindow(labelSubTreeContainer)
+    const labels = currentCluster.nextClusters[node.name].labels_in_branch;
+    if(labels){
+        let counter = 0
+        const labelInfoUL = document.createElement("ul");
+        const labelPattern = document.createElement("H5");
+        labelSubTreeContainer.appendChild(labelPattern);
+        labelPattern.innerText = "Labels in subtree of node: ";
+        let orderedKeys = Object.keys(labels).map(x => parseInt(x)).sort((a,b) => labels[b] - labels[a]);
+        for(let key of orderedKeys){
+            if(counter > 5){
+                break;
+            }
+            const labelInfoLI = document.createElement("ul");
+            labelInfoLI.innerText = key + ": " + labels[key];
+            labelInfoUL.appendChild(labelInfoLI);
+            counter++;
+        }
+        labelSubTreeContainer.appendChild(labelInfoUL);
+    }
+    
+}
+
+function setUpLabelsInSubTreeOfCluster(clusterInfoContainer){
+    const labelsInSubTreeOfClusterDiv = document.createElement("div");
+    clusterInfoContainer.appendChild(labelsInSubTreeOfClusterDiv);
+    labelSubTreeContainer = labelsInSubTreeOfClusterDiv;
+}
+
 /**
  * Procedure for setting information about cluster.
  */
@@ -620,7 +653,8 @@ function setUpClusterInfo(){
     clusterInfoContainer.setAttribute("id", "cluster-info");
     rightSide.appendChild(clusterInfoContainer);
     depthContainerProcedure(clusterInfoContainer);
-    labelsIncluster(clusterInfoContainer);
+    labelsInCurrentCluster(clusterInfoContainer);
+    setUpLabelsInSubTreeOfCluster(clusterInfoContainer);
 }
 
 /**
@@ -884,8 +918,9 @@ function LabelParser(data){
 function DTWparser(data){
     let jsonData = JSON.parse(data);
     var depth = 1;
-    return recursiveParse(jsonData.root,null,depth,null,true,0,""); 
+    return recursiveParse(jsonData.root,null,depth,null,true,0,"",{}); 
 }
+
 
 /**
  * Function for parsing data into clusters.
@@ -897,8 +932,8 @@ function DTWparser(data){
  * 
  * @return new cluster
  */
-function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_branch,label){
-    let currCluster = new Cluster(pivotNode,upperCluster,depth,number_in_branch,label);
+function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_branch,label,labels_in_branch){
+    let currCluster = new Cluster(pivotNode,upperCluster,depth,number_in_branch,label,labels_in_branch);
     let clusterDistannces = {};
     for(let action of layerData){
         let distancesInFormat = {};
@@ -938,7 +973,7 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
             currCluster.max_nodes_in_children_branches = action.number_in_branch;
         }
         if(typeof action.children !== 'undefined' && action.children.length > 1) {
-            currCluster.nextClusters[action.name] = recursiveParse(action.children,currCluster,depth + 1,node,dtw,action.number_in_branch,label);
+            currCluster.nextClusters[action.name] = recursiveParse(action.children,currCluster,depth + 1,node,dtw,action.number_in_branch,label,action.labels_in_branch);
         }
         currCluster.labels[node.label] = (currCluster.labels[node.label] || 0) + 1;
     }
