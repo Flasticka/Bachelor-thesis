@@ -1,0 +1,40 @@
+.load {
+    padding-top: 0.6rem;
+  }
+  
+  /* This is button is inspired https://getcssscan.com/css-buttons-examples, whre you can dowland button for free*/ 
+.loadButton {
+    background-color: #EA4C89;
+    border-style: none;
+    box-sizing: border-box;
+    color: #FFFFFF;
+    cursor: pointer;
+    display: inline-block;
+    font-family: "Haas Grot Text R Web", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    height: 2.5rem;
+    line-height: 1.25rem;
+    list-style: none;
+    margin-right: 0.3rem;
+    margin-top: 0.5rem;
+    outline: none;
+    padding: 0.6rem 1rem;
+    text-align: center;
+    text-decoration: none;
+    transition: color 100ms;
+    vertical-align: baseline;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+  
+.loadButton:hover,
+.loadButton:focus {
+    background-color: #F082AC;
+}
+  
+.inputButton {
+    display: none;
+}
+  

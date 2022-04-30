@@ -34792,7 +34792,7 @@ var Mocap = (function (exports) {
 	        this.addFillingKeyframes = true;
 	        this.addTimeScale = false;
 	        this.keyframeSelectionAlgorithm = KeyframeSelectionAlgorithmEnum.Decimation;
-	        this.labelFrames = false;
+	        this.labelFrames = true;
 	        this.useTrueTime = true;
 	        this.createZoomable = true;
 	        this.model = modelVicon;
@@ -35076,9 +35076,9 @@ var Mocap = (function (exports) {
 	function createZoomableVisualizationElementCustom(sequence, model, numKeyframes, zoomedNumKeyframes, numBlurFrames, mapWidth, mapHeight, visualizationWidth, visualizationHeight, drawStyle, drawStyleBlur, addTimeScale = false, addFillingKeyframes = true, keyframeSelectionAlgorithm = 4, labelFrames = true, useTrueTime = true) {
 	    let main = createVisualizationElementCustom(sequence, model, numKeyframes, numBlurFrames, mapWidth, mapHeight, visualizationWidth, visualizationHeight, drawStyle, drawStyleBlur, addTimeScale, addFillingKeyframes, keyframeSelectionAlgorithm, labelFrames, useTrueTime);
 	    let zoomWidth = Math.floor(document.body.clientWidth-document.body.clientWidth/24);
-	    let zoomHeight = Math.floor(220);
+	    let zoomHeight = Math.floor(document.body.clientHeight*0.6-document.body.clientWidth/16);
 	    let bg = document.createElement("div");
-	    let zoomed = createVisualizationElementCustom(sequence, model, zoomedNumKeyframes, numBlurFrames, 0, 0, zoomWidth, zoomHeight, drawStyle, drawStyleBlur, addTimeScale, addFillingKeyframes, keyframeSelectionAlgorithm, !labelFrames, useTrueTime);
+	    let zoomed = createVisualizationElementCustom(sequence, model, zoomedNumKeyframes, numBlurFrames, 0, 0, zoomWidth, zoomHeight, drawStyle, drawStyleBlur, addTimeScale, addFillingKeyframes, keyframeSelectionAlgorithm, labelFrames, useTrueTime);
 	    zoomed.style = "z-index: 9999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; border: 2px solid black; display: block;";
 	    zoomed.style.backgroundColor = "white";
 	    bg.style = "display: none;";
@@ -35328,6 +35328,7 @@ var Mocap = (function (exports) {
 	exports.noseStyleDefault = noseStyleDefault;
 	exports.rightBoneStyleDefault = rightBoneStyleDefault;
 	exports.visualizeToCanvas = visualizeToCanvas;
+
 	Object.defineProperty(exports, '__esModule', { value: true });
 
 	return exports;

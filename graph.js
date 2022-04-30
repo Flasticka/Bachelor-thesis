@@ -1,3 +1,7 @@
+import * as Mocap from './src/mocap.js';
+import * as Model from './src/model.js';
+import {VisualizationParts} from "./src/MotionsDifferenceVisualiser/Entities/VisualizationParts.js";
+
 /*
 * Variables
 */
@@ -5,10 +9,7 @@ var allNodes = {};
 var currentCluster = null;
 var isDTW = null;
 var maxDistanceInHierarchy = 1;
-var hiddenLayerRightSide = document.getElementById("hiddden-layer-right-side");
-var rightSide = document.getElementById("right-side");
 var labelSubTreeContainer = null;
-
 
 /*
 * Constats
@@ -21,18 +22,30 @@ const mapWidth = 0;
 const mapHeight = 0;
 const dataFileInput = document.getElementById("dataFileInput");
 const loadButton = document.getElementById("dataLoadButton");
+const hiddenLayerRightSide = document.getElementById("hiddden-layer-right-side");
+const hideHiddenLayerBody = document.getElementById("hidden-layer-body");
+const contentBox  = document.getElementById("content-box");
+const rightSide = document.getElementById("right-side");
+const rightSideButtonGraphContainer = document.getElementById('right-side_button-graph-container');
+const vp = new VisualizationParts(false, false, true, true, true, false, false);
+hideHiddenLayerBody.onclick = clearAllContentBox;
 loadButton.onclick = load;
+
+/* Constants for setup dataset input, change it depending on properties of datatset 
+*/
+factory.model = Model.modelVicon;
+const bonesStyle = Model.bonesVicon;
+const FPS = 120;
+
+/* Constants for setup the exploration preferencies, change as you wish :)
+*/
+const maxAlsotInLabel = 7 // the max number of images shown in Also in label section 
+const maxNextInSubTree = 7 // the max number of label shown in The most frequente labels section
+
 /*
 * Constats and variables for skeleton visualization from
 *  Jan Sedmidubsky, Brno, Czech Republic, sedmidubsky@gmail.com
 */
-const bonesVicon = [
-    {a: 0, b: 1}, {a: 1, b: 2}, {a: 2, b: 3}, {a: 3, b: 4}, {a: 4, b: 5}, // leg
-    {a: 0, b: 6}, {a: 6, b: 7}, {a: 7, b: 8}, {a: 8, b: 9}, {a: 9, b: 10}, // leg
-    {a: 0, b: 11}, {a: 11, b: 12}, {a: 12, b: 13}, {a: 13, b: 14}, {a: 14, b: 15}, {a: 15, b: 16}, // torso + head
-    {a: 13, b: 17}, {a: 17, b: 18}, {a: 18, b: 19}, {a: 19, b: 20}, {a: 20, b: 21}, {a: 21, b: 22}, {a: 20, b: 23}, // hand
-    {a: 13, b: 24}, {a: 24, b: 25}, {a: 25, b: 26}, {a: 26, b: 27}, {a: 27, b: 28}, {a: 28, b: 29}, {a: 27, b: 30}]; // hand
-const FPS = 120;
 
 var px = 0;
 var py = 0;
@@ -96,48 +109,39 @@ class Cluster{
  * Procedure for loading hierarchies.
  */
  function load() {
-    callAjax("output.txt","output2.txt","json.txt",processResponse);
+    loadDataFiles("output.txt","output2.txt","json.txt",loadExploration);
 }
 
 /**
- * Procedure for reading hierarchies from files.
- * @param  {String} url first file
- * @param  {String} url2 second file
+ * Procedure for reading data files from files and run .
+ * @param  {String} dtwFile file path with DTW Hierarchy
+ * @param  {String} labelFile file path with Label Hierarchy
+ * @param  {String} imagesFile file path with precomputed images
  * @param  {*} callback callback function
  */
-async function callAjax(url,url2,url3,callback){
-    const response = await fetch(url); 
+async function loadDataFiles(dtwFile,labelFile,imagesFile,callback){
+    const response = await fetch(dtwFile); 
     const result1 = await response.text();
-    const response2 = await fetch(url2);
+    const response2 = await fetch(labelFile);
     const result2 = await response2.text();
-    const response3 = await fetch(url3);
+    const response3 = await fetch(imagesFile);
     const result3 = await response3.text(); 
     callback(result1,result2,result3); 
+}
+
+function clearAllContentBox(){
+    contentBox.innerHTML = '';
+    hideHiddenLayerBody.style.display = "none";
 }
 
 /**
  * Procedure for clearing all elements from right side except hidden layer.
  */
-function clearAll(){
+function clearAllRightSide(){
     rightSide.innerHTML = '';
     rightSide.appendChild(hiddenLayerRightSide);
-}
-
-/**
- * Function for computing colors.
- * @param  {Number} numOfColors number of colors to be computed
- * 
- * @returns {Array} array of colors
- */
-function getColors(numOfColors){
-    let colors = [];
-    let start = 0;
-    let step = 1 / (numOfColors - 1);
-    while(start < 1){
-        colors.push(d3.interpolateTurbo(start));
-        start += step;
-    }
-    return colors;
+    rightSideButtonGraphContainer.innerHTML = ''
+    rightSide.appendChild(rightSideButtonGraphContainer);
 }
 
 /**
@@ -147,7 +151,7 @@ function displayGraph(){
     let nodes = Object.values(currentCluster.nodes);
     let links = currentCluster.links;
     let maxDistance = currentCluster.max;
-    const WIDTH = window.innerWidth - 450;
+    const WIDTH = window.innerWidth - 360 - 230;
     const HEIGHT = window.innerHeight - 40;    
     const NODE_WIDTH = 80;
     const NODE_HEIGHT = 60;
@@ -166,7 +170,7 @@ function displayGraph(){
         .force("center", d3.forceCenter(WIDTH/2,HEIGHT/2))
         .force("collide",d3.forceCollide().radius(RADIUS_VALUE));
 
-    var svg = d3.select("#right-side").append("svg:svg")
+    var svg = d3.select("#right-side_button-graph-container").append("svg:svg")
         .attr("class","graph")
         .attr("id","graph")
         .attr("width", WIDTH)
@@ -177,13 +181,14 @@ function displayGraph(){
     var link = svg.selectAll(".link")
     .data(links)
     .enter().append("line")
-    .attr("stroke",(d) => {
-        return getColorLine(d.distance);
+    .attr("stroke",(l) => {
+        return getColorLine(l.distance);
     })
-    .attr("class", "link").lower();
-
-   // var color = d3.scaleOrdinal(getColors(30))
-    //.domain(labels);
+    .on("click",(l) => {
+        clickLine(l.srcElement.__data__);
+    })
+    .attr("class", "link")
+    .lower()
 
     nodes.forEach((d) => {
         defs.append("pattern")
@@ -311,6 +316,11 @@ function displayGraph(){
     });
 }
 
+function clickLine(line){
+    let visualization = factory.visualizeSequenceDifferences(line.source.sequence,line.target.sequence, 800, undefined, undefined,vp);
+    contentBox.appendChild(visualization)
+    hideHiddenLayerBody.style.display = "block";
+}
 /**
  * Function for setting up the color of line.
  * @param  {Number} distance distance 
@@ -400,7 +410,11 @@ function appendImages(container,node,nodes,sorting = false){
     if(sorting){
         nodes = nodes.sort(sortNames);
     }
+    let counter = 0;
     for (let n of nodes){
+        if(!sorting && counter == maxAlsotInLabel){
+            break
+        }
         let smallImage = document.createElement("img");
         smallImage.setAttribute("name",n.name);
         smallImage.setAttribute("class", "small-image");
@@ -418,6 +432,7 @@ function appendImages(container,node,nodes,sorting = false){
             }
         }
         container.appendChild(smallImage);
+        counter++;
     }
 }
 
@@ -453,21 +468,6 @@ function actionInfoProcedure(node,showWindow){
 }
 
 /**
- * Procedure for setting sequence part in show window.
- * @param  {Node} node selected node
- * @param  {*} showWindow show window 
- */
-function appendVisualization(node,showWindow){
-    const smallVisualizationContainer = document.createElement("div");
-    smallVisualizationContainer.setAttribute("class","small-visualization-container");
-    smallVisualizationContainer.style.width = visualizationWidth + mapWidth;
-    smallVisualizationContainer.style.height = Math.max(visualizationHeight, mapHeight);
-    smallVisualizationContainer.appendChild(node.image);
-    showWindow.appendChild(smallVisualizationContainer);
-
-}
-
-/**
  * Procedure for setting up next in sequence part in show window.
  * @param  {Node} node selected node
  * @param  {*} showWindow show window 
@@ -500,7 +500,7 @@ function deafultClusters(node){
     hideHiddenLayerRightSide();
     if(!(node.name in currentCluster.nodes)){
         hiddenLayerRightSide.style.display = "block";
-        buttonContainer = document.createElement("div");
+        let buttonContainer = document.createElement("div");
         buttonContainer.setAttribute("class","default-cluster-container");
         setUpHiddenLayerRightSideHeader(buttonContainer);
         if(node.defaultDTWCluster != null){
@@ -592,6 +592,7 @@ function depthContainerProcedure(clusterInfoContainer){
     depthContainer.setAttribute("class", "depth-container");
     depthPattern.innerText = "Cluster depth: ";  
     depth.innerText = currentCluster.depth;
+    depth.setAttribute('class','depth-value')
     depthContainer.appendChild(depthPattern);
     depthContainer.appendChild(depth);
     clusterInfoContainer.appendChild(depthContainer);
@@ -605,6 +606,7 @@ function labelsInCurrentCluster(clusterInfoContainer){
     const labelInfoUL = document.createElement("ul");
     const labelPattern = document.createElement("H5");
     labelPattern.innerText = "Labels in current cluster: ";
+    labelPattern.setAttribute('class','labels-current-cluster')
     clusterInfoContainer.appendChild(labelPattern);
     let orderedKeys = Object.keys(currentCluster.labels).map(x => parseInt(x)).sort((a,b) => a - b);
     for(let key of orderedKeys){
@@ -617,16 +619,19 @@ function labelsInCurrentCluster(clusterInfoContainer){
 
 function labelsInSubTreeOfCluster(node){
     deleteContentOfWindow(labelSubTreeContainer)
+    if(!(node.name in currentCluster.nextClusters)){
+        return
+    }
     const labels = currentCluster.nextClusters[node.name].labels_in_branch;
     if(labels){
         let counter = 0
         const labelInfoUL = document.createElement("ul");
         const labelPattern = document.createElement("H5");
         labelSubTreeContainer.appendChild(labelPattern);
-        labelPattern.innerText = "Labels in subtree of node: ";
+        labelPattern.innerText = "The most frequent labels in subtree of node: ";
         let orderedKeys = Object.keys(labels).map(x => parseInt(x)).sort((a,b) => labels[b] - labels[a]);
         for(let key of orderedKeys){
-            if(counter > 5){
+            if(counter == maxNextInSubTree){
                 break;
             }
             const labelInfoLI = document.createElement("ul");
@@ -641,6 +646,7 @@ function labelsInSubTreeOfCluster(node){
 
 function setUpLabelsInSubTreeOfCluster(clusterInfoContainer){
     const labelsInSubTreeOfClusterDiv = document.createElement("div");
+    labelsInSubTreeOfClusterDiv.setAttribute("class","labels-subtree-container")
     clusterInfoContainer.appendChild(labelsInSubTreeOfClusterDiv);
     labelSubTreeContainer = labelsInSubTreeOfClusterDiv;
 }
@@ -664,7 +670,7 @@ function setUpClusterInfo(){
  */
 function labelContainerProcedure(node,showWindow){
     const labelPattern = document.createElement("H4");
-    labelPattern.innerText = "Next in label " + node.label + ":";  
+    labelPattern.innerText = "Also in label " + node.label + ":";  
     let labelContainer = document.createElement("div");
     labelContainer.setAttribute("id","label-container");
     labelContainer.appendChild(labelPattern);
@@ -730,7 +736,7 @@ function setUpperClusterButton(){
         graphLayer(currentCluster.upperCluster,null);
         clickNode(pivot);
     };
-    rightSide.append(seeAUpperCluster);
+    rightSideButtonGraphContainer.append(seeAUpperCluster);
 }
 
 /**
@@ -769,7 +775,7 @@ function setLabelHierarchy(LabelHierarchy){
 function showLabelHierarchy(showWindow){
     deleteContentOfWindow(showWindow);
     hideHiddenLayerRightSide();
-    clearAll();
+    clearAllRightSide();
     const chooseLabelWindow = document.getElementById("choose-label");
     chooseLabelWindow.style.display = "inline-block";
     isDTW = false;
@@ -801,7 +807,7 @@ function createHierarchyButtons(DTWHierarchy,LabelHierarchy){
  * @param  {String} DTWHierarchyStringData DTW hierarchy data
  * @param  {String} labelHierarchyStringData label hierarchy data
  */
-function processResponse(DTWHierarchyStringData,labelHierarchyStringData,jsonData){
+function loadExploration(DTWHierarchyStringData,labelHierarchyStringData,jsonData){
     if (dataFileInput.files.length == 0){
         console.log("No file selected!");
         return;
@@ -881,7 +887,7 @@ function graphLayer(node,goingDeep){
         
         }   
     }
-    clearAll();
+    clearAllRightSide();
     const selectWindowLabel = document.getElementById('choose-label');
     if(isDTW){
         selectWindowLabel.style.display = "none";
@@ -947,27 +953,7 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
             distances.push(parseFloat(splitLineSecondtLayer[1]));
         }
         clusterDistannces[action.name] = [distancesInFormat,distances];
-        let node;
-        if(action.name in allNodes){
-            node = allNodes[action.name];
-            if(dtw){
-                if(node.defaultDTWCluster == null){
-                    node.defaultDTWCluster = currCluster;
-                }
-            }else{
-                if(node.defaultLabelCluster == null){
-                    node.defaultLabelCluster = currCluster;
-                }
-            }
-        }else{
-            node = new Node(action.name);
-            if(dtw){
-                node.defaultDTWCluster = currCluster;
-            }else{
-                node.defaultLabelCluster = currCluster;   
-            }
-            allNodes[action.name] = node;
-        }
+        let node = setUpNode(action,currCluster,dtw)
         currCluster.nodes[action.name] = node;
         if(currCluster.max_nodes_in_children_branches < action.number_in_branch){
             currCluster.max_nodes_in_children_branches = action.number_in_branch;
@@ -977,6 +963,36 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
         }
         currCluster.labels[node.label] = (currCluster.labels[node.label] || 0) + 1;
     }
+    computeLinks(clusterDistannces,currCluster); 
+    return currCluster; 
+}
+
+function setUpNode(action,currCluster,dtw){
+    let node;
+    if(action.name in allNodes){
+        node = allNodes[action.name];
+        if(dtw){
+            if(node.defaultDTWCluster == null){
+                node.defaultDTWCluster = currCluster;
+            }
+        }else{
+            if(node.defaultLabelCluster == null){
+                node.defaultLabelCluster = currCluster;
+            }
+        }
+    }else{
+        node = new Node(action.name);
+        if(dtw){
+            node.defaultDTWCluster = currCluster;
+        }else{
+            node.defaultLabelCluster = currCluster;   
+        }
+        allNodes[action.name] = node;
+    }
+    return node
+}
+
+function computeLinks(clusterDistannces,currCluster){
     for(let key in clusterDistannces){
         let distancesInFormat = clusterDistannces[key][0];
         let distances = clusterDistannces[key][1];
@@ -998,7 +1014,6 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
             currCluster.links.push({source: currCluster.nodes[key], target : currCluster.nodes[key2], distance : dist, title: dist});
         }
     }  
-    return currCluster; 
 }
 
 /**
@@ -1130,24 +1145,19 @@ function setFrame(sequence,canvas,button,slider,times){
         
     },);
     frames[0] = new K3D.K3DObject();
-    with (frames[0]) {
-        color = [29,248,190];
-        drawmode = "wireframe";
-        shademode = "depthcue";
-        scale = 3.2;
-        init(sequence[0],bonesVicon,[]
-        );
-    }
+    frames[0].color = [29,248,190];
+    frames[0].drawmode = "wireframe";
+    frames[0].shademode = "depthcue";
+    frames[0].scale = 3.2;
+    frames[0].init(sequence[0],bonesStyle,[]);
     showFrame(controller, frames, 0);
     for (let index = Math.floor(FPS/10); index < sequence.length ;index += Math.floor(FPS/10)) {
         frames[index] = new K3D.K3DObject();
-        with (frames[index]) {
-            color = [29,248,190];
-            drawmode = "wireframe";
-            shademode = "depthcue";
-            scale = 3.2;
-            init(sequence[index],bonesVicon,[]);
-        }      
+        frames[index].color = [29,248,190];
+        frames[index].drawmode = "wireframe";
+        frames[index].shademode = "depthcue";
+        frames[index].scale = 3.2;
+        frames[index].init(sequence[index],bonesStyle,[]);    
     }
     var marginGap =  285 / (Math.floor(frames.length / Math.floor(FPS/10)));
     var numOfTimes = Math.floor(frames.length / FPS );

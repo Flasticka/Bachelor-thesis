@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>bc-js</title>
+    <title>graph</title>
     <link rel="stylesheet" href="./style.css">
 
     <link href="./mocap/jquery/jquery-ui.css" rel="stylesheet" type="text/css">
     
-    <script src="./mocap.js"></script>
+    
     <script src="https://d3js.org/d3.v7.min.js"></script>
     
 
@@ -24,10 +24,13 @@
     
 </head>
 <body>
+    <div id="hidden-layer-body">
+        <div id="content-box"></div>
+    </div>
     <div class="container">
         <div id="left-side">
             <div class="load">
-                <input type="file" id="dataFileInput" name="dataFileInput" accept=".data,.txt" class="inputButton" >
+                <input type="file" id="dataFileInput" name="dataFileInput" accept=".data,.txt" class="inputButton">
                 <label for="dataFileInput" class="loadButton">Choose a file</label>
                 <button type="submit" class="loadButton" id="dataLoadButton">Load a file</button>
             </div>
@@ -44,8 +47,9 @@
         <div id="right-side">
             <div id="hiddden-layer-right-side">
             </div>
+            <div id="right-side_button-graph-container"></div>
         </div>   
     </div>
-    <script src="./graph.js"></script>
+    <script type="module" src="./graph.js"></script>
 </body>
 </html>
