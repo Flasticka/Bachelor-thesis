@@ -24,16 +24,13 @@
     
 </head>
 <body>
+    <div id="loading-window"></div>
     <div id="hidden-layer-body">
+        <div id="hidden-layer__loading-window"></div>
         <div id="content-box"></div>
     </div>
     <div class="container">
         <div id="left-side">
-            <div class="load">
-                <input type="file" id="dataFileInput" name="dataFileInput" accept=".data,.txt" class="inputButton">
-                <label for="dataFileInput" class="loadButton">Choose a file</label>
-                <button type="submit" class="loadButton" id="dataLoadButton">Load a file</button>
-            </div>
             <div class="choose-hierarchy" id="choose-hierarchy">
                 <button class="loadButton" id="DTW-hierarchy" >DTW hierarchy</button>
                 <button class="loadButton" id="label-hierarchy" >Label hierarchy</button>
@@ -41,6 +38,13 @@
             <div class="choose-label" id="choose-label">
                 <select id="select"></select>
                 <button id="select-label" class="loadButton">Select</button>
+            </div>
+            <div id="find-action">
+                <div id="find-action__form">
+                    <label for="action">Find action</label>
+                    <input type="text" id="action" name="action">
+                    <button id="find-action__button" class="loadButton">Find</button>
+                </div>
             </div>
             <div class="show" id="show"></div>
         </div>

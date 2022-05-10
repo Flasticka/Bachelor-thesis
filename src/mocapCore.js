@@ -123,6 +123,9 @@ function processSequenceToFramesAuto(sequence, numKeyframes, width, height, swit
     }
     if (frames.length == 0) {
         frames = processSequenceToFrames2d(sequence, canvasHeight, figureScale, switchY);
+        if(frames.length < numKeyframes){
+            numKeyframes = frames.length   
+        }
         if (!switchY) {
             figureScale = figureScale*findOptimalScale(frames, width*0.99, (height-20)*0.9, numKeyframes);
         } else {
@@ -130,6 +133,9 @@ function processSequenceToFramesAuto(sequence, numKeyframes, width, height, swit
         }
         frames = processSequenceToFrames2d(sequence, canvasHeight, figureScale, switchY);
     } else {
+        if(frames.length < numKeyframes){
+            numKeyframes = frames.length   
+        }
         if (!switchY) {
             figureScale = figureScale*findOptimalScale(frames, width*0.99, (height-20)*0.9, numKeyframes);
         } else {
@@ -509,9 +515,11 @@ function getFillKeyframes(frames, keyframes, sceneWidth) {
         let space = ((helpKeyframes[i]-helpKeyframes[i-1])/frames.length)*sceneWidth-width-sceneWidth/50;
         if (space > width) {
             let element = Math.round((helpKeyframes[i]+helpKeyframes[i-1])/2);
-            helpKeyframes.splice(i, 0, element);
-            result.push(element);
-            i--;
+            if (!helpKeyframes.includes(element)) {
+                helpKeyframes.splice(i, 0, element);
+                result.push(element);
+                i--;
+            }
         }
     }
     return result.sort((a, b) => a-b);
@@ -651,6 +659,12 @@ function findOptimalScale(frames, width, height, numFrames) {
         maxWidth = Math.max(maximums.x-minimums.x, maxWidth);
     }
     let maxHeight = maximums.y-minimums.y;
+    if(maxHeight == 0){
+        maxHeight = 1; 
+    }
+    if(maxWidth == 0){
+        maxWidth = 1;
+    }
     let scaleHeight = (height)/(maxHeight);
     let scaleWidth = (width/(numFrames))/(maxWidth);
     if (scaleHeight < 0 && scaleWidth < 0) {

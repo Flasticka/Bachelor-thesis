@@ -6,10 +6,14 @@ import {VisualizationParts} from "./src/MotionsDifferenceVisualiser/Entities/Vis
 * Variables
 */
 var allNodes = {};
+var allCategories = {};
+var nodesInCategories = {};
+var nodesInSequence = {};
 var currentCluster = null;
 var isDTW = null;
 var maxDistanceInHierarchy = 1;
 var labelSubTreeContainer = null;
+var isGraphShown = false;
 
 /*
 * Constats
@@ -20,22 +24,30 @@ const visualizationWidth = 240;
 const visualizationHeight = 180;
 const mapWidth = 0; 
 const mapHeight = 0;
-const dataFileInput = document.getElementById("dataFileInput");
-const loadButton = document.getElementById("dataLoadButton");
+const showWindow = document.getElementById("show");
 const hiddenLayerRightSide = document.getElementById("hiddden-layer-right-side");
 const hideHiddenLayerBody = document.getElementById("hidden-layer-body");
 const contentBox  = document.getElementById("content-box");
 const rightSide = document.getElementById("right-side");
 const rightSideButtonGraphContainer = document.getElementById('right-side_button-graph-container');
 const vp = new VisualizationParts(false, false, true, true, true, false, false);
+const loadingWindow = document.getElementById('loading-window');
+const loadingWindowHiddenLayer = document.getElementById('hidden-layer__loading-window');
+const findAction = document.getElementById('find-action');
+const findActionForm = document.getElementById('find-action__form');
+const findActionButton = document.getElementById('find-action__button');
+const inputAction = document.getElementById('action');
 hideHiddenLayerBody.onclick = clearAllContentBox;
-loadButton.onclick = load;
+findActionButton.onclick = handleFindNode;
+
+window.onload = loadInterfaceVisualization;
 
 /* Constants for setup dataset input, change it depending on properties of datatset 
 */
 factory.model = Model.modelVicon;
 const bonesStyle = Model.bonesVicon;
 const FPS = 120;
+const numberOfActions = 3000;
 
 /* Constants for setup the exploration preferencies, change as you wish :)
 */
@@ -49,7 +61,6 @@ const maxNextInSubTree = 7 // the max number of label shown in The most frequent
 
 var px = 0;
 var py = 0;
-var rotating = false;
 
 /** 
  * Class, used to represent a single node. 
@@ -58,15 +69,13 @@ class Node{
     /**
      * Constructor of Node class.
      * @param  {string} name node name
-     * @param  {Cluster} defaultCluster default cluster of node (the cluster where node appears for the first time) 
      */
     constructor(name){
         this.name = name;
         this.label = name.split('_')[1];
+        this.sequenceId = name.split('_')[0];
         this.image = null;
         this.visualization = null;
-        this.sameSequence = [];
-        this.sameLabel= [];
         this.sequence = null;
         this.defaultDTWCluster = null;
         this.defaultLabelCluster = null;
@@ -83,13 +92,15 @@ class Cluster{
      * @param  {Node} pivotNode pivot node of cluster (node behind which, is a another cluster)
      * @param  {Cluster} upperCluster upper cluster of this cluster (cluster, where is pivot node of this cluster)
      * @param  {Number} depth depth of this cluster
+     * @param  {Number} number_in_branch number of nodes in branch
+     * @param  {*} labels_in_branch labels in branch
      */
-    constructor(pivotNode,upperCluster,depth,number_in_branch,labelName,labels_in_branch){
+    constructor(pivotNode,upperCluster,depth,number_in_branch,labels_in_branch){
         this.pivotNode = pivotNode;
         if(pivotNode == null){
-            this.name = "root" + labelName;
+            this.name = "root";
         }else{
-            this.name = pivotNode.name + labelName;
+            this.name = pivotNode.name;
         } 
         this.nodes = {};
         this.links = []
@@ -108,8 +119,10 @@ class Cluster{
 /**
  * Procedure for loading hierarchies.
  */
- function load() {
-    loadDataFiles("output.txt","output2.txt","json.txt",loadExploration);
+ async function loadInterfaceVisualization() {
+    loadingWindow.style.display = 'block';
+    await loadDataFiles("./HDM05Data/allActionsHierarchy.txt","./HDM05Data/labelsHierarchies.txt","./HDM05Data/precomputedImages.txt","./HDM05Data/HDM05-category_description.txt","./HDM05Data/HDM05-120fps-normPOS.data",loadExploration);
+    
 }
 
 /**
@@ -117,18 +130,27 @@ class Cluster{
  * @param  {String} dtwFile file path with DTW Hierarchy
  * @param  {String} labelFile file path with Label Hierarchy
  * @param  {String} imagesFile file path with precomputed images
+ * @param  {String} categoriesFile file path with categories
+ * @param  {String} posesFile file path with actions
  * @param  {*} callback callback function
  */
-async function loadDataFiles(dtwFile,labelFile,imagesFile,callback){
+async function loadDataFiles(dtwFile,labelFile,imagesFile,categoriesFile,posesFile,callback){
     const response = await fetch(dtwFile); 
     const result1 = await response.text();
     const response2 = await fetch(labelFile);
     const result2 = await response2.text();
     const response3 = await fetch(imagesFile);
-    const result3 = await response3.text(); 
-    callback(result1,result2,result3); 
+    const result3 = await response3.text();
+    const response4 = await fetch(categoriesFile); 
+    const result4 = await response4.text();
+    const response5 = await fetch(posesFile); 
+    const result5 = await response5.text();
+    callback(result1,result2,result3,result4,result5); 
 }
 
+/**
+ * Procedure for clearing content box.
+ */
 function clearAllContentBox(){
     contentBox.innerHTML = '';
     hideHiddenLayerBody.style.display = "none";
@@ -140,7 +162,7 @@ function clearAllContentBox(){
 function clearAllRightSide(){
     rightSide.innerHTML = '';
     rightSide.appendChild(hiddenLayerRightSide);
-    rightSideButtonGraphContainer.innerHTML = ''
+    deleteContentOfWindow(rightSideButtonGraphContainer)
     rightSide.appendChild(rightSideButtonGraphContainer);
 }
 
@@ -180,15 +202,9 @@ function displayGraph(){
 
     var link = svg.selectAll(".link")
     .data(links)
-    .enter().append("line")
-    .attr("stroke",(l) => {
-        return getColorLine(l.distance);
-    })
-    .on("click",(l) => {
-        clickLine(l.srcElement.__data__);
-    })
-    .attr("class", "link")
-    .lower()
+    .enter()
+    .append("g")
+    .call(setUpLink);
 
     nodes.forEach((d) => {
         defs.append("pattern")
@@ -208,6 +224,27 @@ function displayGraph(){
       .call(drag(force))
       .call(setUpNode);
     
+    function setUpLink(l){
+        l.append("line")
+        .attr("stroke",(l) => {
+            return getColorLine(l.distance);
+        })
+        .attr("class", "link")
+        .lower();
+
+        l.append("line")
+        .attr("class", "link-invisible")
+        .on("click",loadLine)
+    }
+    function loadLine(l){
+        loadingWindowHiddenLayer.style.display = 'block';
+        hideHiddenLayerBody.style.display = "block";
+        window.setTimeout(function() {
+            clickLine(l.srcElement.__data__);
+            loadingWindowHiddenLayer.style.display = 'none';
+        }, 50);
+    }
+
     function setUpNode(n){
         n.append("rect")
         .attr("fill", "white")
@@ -269,7 +306,7 @@ function displayGraph(){
     }
 
     force.on("tick", function() {
-        link.attr("x1", (d) => { 
+        link.selectAll("line").attr("x1", (d) => { 
             return d.source.x; 
         })
         .attr("y1", (d) => { 
@@ -296,12 +333,12 @@ function displayGraph(){
         node.selectAll("text").attr("x", (d) => {
             let computedWidth = computeSizeNode(d,NODE_WIDTH)/2;
             d.x = Math.max(computedWidth, Math.min(WIDTH - computedWidth, d.x )); 
-            return d.x - 2;
+            return d.x - computedWidth / 4;
         })
         .attr("y", (d) => {
             let computedHeight = computeSizeNode(d,NODE_HEIGHT)/2;
             d.y = Math.max(computedHeight, Math.min(HEIGHT - computedHeight, d.y ));
-            return d.y - computedHeight + computedHeight / 2;
+            return d.y - computedHeight + computedHeight / 2.5;
         });
     });
 
@@ -316,11 +353,19 @@ function displayGraph(){
     });
 }
 
+/**
+ * Procedure for displaying sequence difference visualization 
+ * @param  {*} line clicked line
+ * 
+ */
 function clickLine(line){
-    let visualization = factory.visualizeSequenceDifferences(line.source.sequence,line.target.sequence, 800, undefined, undefined,vp);
-    contentBox.appendChild(visualization)
-    hideHiddenLayerBody.style.display = "block";
+    const visualization = factory.visualizeSequenceDifferences(line.source.sequence,line.target.sequence, 800, undefined, undefined,vp);
+    visualization.children[1].querySelectorAll("span")[0].style.width="80px";
+    visualization.children[2].querySelectorAll("span")[0].style.width="80px";
+    contentBox.appendChild(visualization);
+    loadingWindow.style.display = 'none';
 }
+
 /**
  * Function for setting up the color of line.
  * @param  {Number} distance distance 
@@ -334,9 +379,11 @@ function getColorLine(distance){
 /**
  * Procedure for setting stroke after click on the node.
  * @param  {*} rectangle svg element of rectangle
- * @param  {Node} node slected node
  */
 function setStrokeWidth(rectangle){
+    if(currentCluster == null){
+        return
+    }
     if(currentCluster.selectedNode != null){
         deleteStrokeWidth();
     }
@@ -348,6 +395,9 @@ function setStrokeWidth(rectangle){
  * Procedure for deleting stroke.
  */
 function deleteStrokeWidth(){
+    if(currentCluster == null){
+        return
+    }
     d3.select(currentCluster.selectedNode).style("stroke-width", 2).style("stroke", "#EA4C89");
 }
 
@@ -378,14 +428,32 @@ function computeSizeNode(node,defaultSize){
 }
 
 /**
+ * Procedure for finding node
+ *
+ */
+function handleFindNode(){
+    const actionName = inputAction.value
+    findAction.innerHTML = '';
+    findAction.appendChild(findActionForm);
+    findAction.getElementsByTagName("span");
+    if(!(actionName in allNodes)){
+        const error = document.createElement("span");
+        error.setAttribute('class','errorMessage')
+        error.innerText = "Action not in dataset";
+        findAction.appendChild(error);
+        return
+    }
+    mapNodeClick(actionName);
+}
+
+/**
  * Procedure for deleting current content of show window and calling function for setting widow of selected node.
  * @param  {Node} node slected node
  */
 function clickNode(node){
-    const showWindow = document.getElementById("show");
     deleteContentOfWindow(showWindow);
     setStrokeWidth(node.currentGraphNodeVisualization);
-    createShowWindowNode(node,showWindow);
+    createShowWindowNode(node);
     labelsInSubTreeOfCluster(node); 
 }
 
@@ -415,6 +483,9 @@ function appendImages(container,node,nodes,sorting = false){
         if(!sorting && counter == maxAlsotInLabel){
             break
         }
+        if(!sorting && n.name == node.name){
+            continue
+        }
         let smallImage = document.createElement("img");
         smallImage.setAttribute("name",n.name);
         smallImage.setAttribute("class", "small-image");
@@ -425,7 +496,7 @@ function appendImages(container,node,nodes,sorting = false){
         if(n.name == node.name){
             smallImage.setAttribute("style", "border: yellow solid 2.5px; margin-right: 10px; height: 60px; width: 80px;");
         }else{
-            if(n.name in currentCluster.nodes){
+            if(currentCluster != null && n.name in currentCluster.nodes){
                 smallImage.setAttribute("style", "border: #89E039 solid 1px; margin-right: 10px; height: 40px; width: 60px;");
             }else{
                 smallImage.setAttribute("style", "border: #EA4C89 solid 1px; margin-right: 10px; height: 40px; width: 60px;");
@@ -451,9 +522,8 @@ function sortNames(a, b) {
 /**
  * Procedure for setting sequence part in show window.
  * @param  {Node} node selected node
- * @param  {*} showWindow show window 
  */
-function actionInfoProcedure(node,showWindow){
+function actionInfoProcedure(node){
     const sequencePattern = document.createElement("H4");
     const sequence = document.createElement("H4");
     sequencePattern.setAttribute("class", "patt");
@@ -462,7 +532,7 @@ function actionInfoProcedure(node,showWindow){
     sequence.innerText = node.name;
     showWindow.appendChild(sequencePattern);
     showWindow.appendChild(sequence);
-    nameContainerProcedure(node,showWindow);
+    nameContainerProcedure(node);
     showWindow.appendChild(node.visualization);
     
 }
@@ -470,14 +540,13 @@ function actionInfoProcedure(node,showWindow){
 /**
  * Procedure for setting up next in sequence part in show window.
  * @param  {Node} node selected node
- * @param  {*} showWindow show window 
  */
-function sequenceContainerProcedure(node,showWindow){
+function sequenceContainerProcedure(node){
     const sequencePattern = document.createElement("H4");
     const sequenceContainer = document.createElement("div");
     sequencePattern.innerText = "Sequence " + node.name.split("_")[0] + ":";
     sequenceContainer.appendChild(sequencePattern);
-    appendImages(sequenceContainer,node,node.sameSequence,true);
+    appendImages(sequenceContainer,node,nodesInSequence[node.sequenceId],true);
     showWindow.appendChild(sequenceContainer);
 }
 
@@ -496,9 +565,9 @@ function setUpHiddenLayerRightSideHeader(buttonContainer){
  * Procedure for setting up default clusters in hidden layer.
  * @param  {Node} node selected node
  */
-function deafultClusters(node){
+function defaultClusters(node){
     hideHiddenLayerRightSide();
-    if(!(node.name in currentCluster.nodes)){
+    if(currentCluster == null || !(node.name in currentCluster.nodes) || !isGraphShown){
         hiddenLayerRightSide.style.display = "block";
         let buttonContainer = document.createElement("div");
         buttonContainer.setAttribute("class","default-cluster-container");
@@ -556,6 +625,10 @@ function hideHiddenLayerRightSide(){
     hiddenLayerRightSide.style.display = "none";
 }
 
+/**
+ * Procedure for setting up sequence visualiyation if do not exist.
+ * @param  {Node} node selected node
+ */
 function setUpVisulaization(node){
     if(node.visualization == null){
         node.visualization = factory.createVisualization(node.sequence, visualizationWidth,visualizationHeight, mapWidth, mapHeight);
@@ -564,9 +637,8 @@ function setUpVisulaization(node){
 /**
  * Procedure for setting name part in show window.
  * @param  {Node} node selected node
- * @param  {*} showWindow show window 
  */
-function nameContainerProcedure(node,showWindow){
+function nameContainerProcedure(node){
     setUpVisulaization(node)
     const namePattern = document.createElement("H4");
     const name  = document.createElement("H4");
@@ -574,7 +646,7 @@ function nameContainerProcedure(node,showWindow){
     namePattern.setAttribute("class", "patt");
     namePattern.innerText = "Category name:"; 
     name.setAttribute("class", "val");
-    name.innerText = node.visualization.className.split("-")[1];
+    name.innerText = allCategories[node.label];
     nameContainer.appendChild(namePattern);
     nameContainer.appendChild(name);
     showWindow.appendChild(nameContainer);
@@ -582,8 +654,7 @@ function nameContainerProcedure(node,showWindow){
 
 /**
  * Procedure for setting depth part in show window.
- * @param  {Node} node selected node
- * @param  {*} showWindow show window 
+ * @param  {*} clusterInfoContainer html container where depth will be added
  */
 function depthContainerProcedure(clusterInfoContainer){
     const depthPattern = document.createElement("H5");
@@ -617,7 +688,14 @@ function labelsInCurrentCluster(clusterInfoContainer){
     clusterInfoContainer.appendChild(labelInfoUL);
 }
 
+/**
+ * Procedure for choosing the most frequente lables in cluster sub three.
+ * @param  {Node} node selected node
+ */
 function labelsInSubTreeOfCluster(node){
+    if(labelSubTreeContainer == null){
+        return
+    }
     deleteContentOfWindow(labelSubTreeContainer)
     if(!(node.name in currentCluster.nextClusters)){
         return
@@ -644,6 +722,10 @@ function labelsInSubTreeOfCluster(node){
     
 }
 
+/**
+ * Procedure for setting up html element which holds info about the most frequente labels.
+ * @param  {*} clusterInfoContainer hmtl container for dispalying cluster info
+ */
 function setUpLabelsInSubTreeOfCluster(clusterInfoContainer){
     const labelsInSubTreeOfClusterDiv = document.createElement("div");
     labelsInSubTreeOfClusterDiv.setAttribute("class","labels-subtree-container")
@@ -666,24 +748,22 @@ function setUpClusterInfo(){
 /**
  * Procedure for setting label part in show window.
  * @param  {Node} node selected node
- * @param  {*} showWindow show window 
  */
-function labelContainerProcedure(node,showWindow){
+function labelContainerProcedure(node){
     const labelPattern = document.createElement("H4");
     labelPattern.innerText = "Also in label " + node.label + ":";  
     let labelContainer = document.createElement("div");
     labelContainer.setAttribute("id","label-container");
     labelContainer.appendChild(labelPattern);
-    appendImages(labelContainer,node,node.sameLabel);
+    appendImages(labelContainer,node,nodesInCategories[node.label]);
     showWindow.appendChild(labelContainer);
 }
 
 /**
  * Procedure for setting animated sequence part in show window.
  * @param  {Node} node selected node
- * @param  {*} showWindow show window 
  */
-function animatedSequenceContainerProcedure(node,showWindow){
+function animatedSequenceContainerProcedure(node){
     let animatedSequence = document.createElement("canvas"); 
     animatedSequence.setAttribute("class","animated-sequence");
     animatedSequence.setAttribute("id","animated-sequence");
@@ -709,14 +789,13 @@ function animatedSequenceContainerProcedure(node,showWindow){
 /**
  * Function for creating show window for node.
  * @param  {Node} node selected node
- * @param  {*} showWindow show window 
  */
-function createShowWindowNode(node,showWindow){
-    deafultClusters(node);
-    actionInfoProcedure(node,showWindow);
-    animatedSequenceContainerProcedure(node,showWindow);
-    sequenceContainerProcedure(node,showWindow);
-    labelContainerProcedure(node,showWindow);  
+function createShowWindowNode(node){
+    defaultClusters(node);
+    actionInfoProcedure(node);
+    animatedSequenceContainerProcedure(node);
+    sequenceContainerProcedure(node);
+    labelContainerProcedure(node);  
 }
 
 /**
@@ -741,11 +820,11 @@ function setUpperClusterButton(){
 
 /**
  * Procedure for deleting window.
- * @param  {*} showWindow show window 
+ * @param   {*} selectedWindow selected window, which content is going to be deleted
  */
-function deleteContentOfWindow(showWindow){
-    while (showWindow.firstChild) {
-        showWindow.removeChild(showWindow.lastChild);
+function deleteContentOfWindow(selectedWindow){
+    while (selectedWindow.lastChild) {
+        selectedWindow.removeChild(selectedWindow.lastChild);
       }
 }
 
@@ -759,26 +838,27 @@ function setLabelHierarchy(LabelHierarchy){
     const button = document.getElementById("select-label");
     button.onclick  = () => {
         deleteContentOfWindow(showWindow);
-        graphLayer(LabelHierarchy[selectSelect.value],null);
+        let value = selectSelect.value.split('-')[0];
+        graphLayer(LabelHierarchy[value],null);
     };
     for(let key in LabelHierarchy){
         const selectOption = document.createElement("option")
-        selectOption.innerText = key;
+        selectOption.innerText =  key + "-" + allCategories[key];
         selectSelect.appendChild(selectOption);
     }
 }
 
 /**
  * Procedure for setting up show of thelabel hierarchie.
- * @param  {*} showWindow show window
  */
-function showLabelHierarchy(showWindow){
+function showLabelHierarchy(){
     deleteContentOfWindow(showWindow);
     hideHiddenLayerRightSide();
     clearAllRightSide();
     const chooseLabelWindow = document.getElementById("choose-label");
     chooseLabelWindow.style.display = "inline-block";
     isDTW = false;
+    isGraphShown = false;
 }
 
 /**
@@ -787,9 +867,10 @@ function showLabelHierarchy(showWindow){
  * @param  {*} LabelHierarchy label hierarchy
  */
 function createHierarchyButtons(DTWHierarchy,LabelHierarchy){
-    const showWindow = document.getElementById("show");
     const buttonDiv = document.getElementById('choose-hierarchy');
     buttonDiv.style.display = "inline-block";
+    findAction.style.display = 'block';
+    loadingWindow.style.display = 'none';
     const buttonDTWHierarchy = document.getElementById('DTW-hierarchy');
     const buttonLabelHierarchy = document.getElementById('label-hierarchy');
     buttonDTWHierarchy.onclick = () => {
@@ -806,66 +887,73 @@ function createHierarchyButtons(DTWHierarchy,LabelHierarchy){
  * Procedure for responsing after files load.
  * @param  {String} DTWHierarchyStringData DTW hierarchy data
  * @param  {String} labelHierarchyStringData label hierarchy data
+ * @param  {String} imagesData images data
+ * @param  {String} categoriesData categories data
+ * @param  {String} posesData poses data
  */
-function loadExploration(DTWHierarchyStringData,labelHierarchyStringData,jsonData){
-    if (dataFileInput.files.length == 0){
-        console.log("No file selected!");
-        return;
-    }
+function loadExploration(DTWHierarchyStringData,labelHierarchyStringData,imagesData,categoriesData,posesData){
     allNodes = {};
+    allCategories = {};
     currentCluster = null;
     isDTW = null;
     maxDistanceInHierarchy = 1;
-    parseClusterData(DTWHierarchyStringData,labelHierarchyStringData,JSON.parse(jsonData));  
+    parseCatoriesData(categoriesData);
+    categoriesData = null
+    parseClusterData(DTWHierarchyStringData,labelHierarchyStringData,JSON.parse(imagesData),posesData);  
 }
 
+/**
+ * Procedure for parsing categories data.
+ * @param  {String} categoriesData categories data
+ */
+function parseCatoriesData(categoriesData){
+    let split = categoriesData.split('\n');
+    for(let line of split){
+        let splitLine = line.split(';');
+        allCategories[splitLine[0]] = splitLine[1];
+    }
+}
 
 /**
  * Procedure for parsing data and creating images.
  * @param  {*} DTWHierarchyStringData DTW input data
  * @param  {*} labelHierarchyStringData label input data
+ * @param  {JSON} imagesData images data
+ * @param  {String} posesData poses data
  */
-function parseClusterData(DTWHierarchyStringData,labelHierarchyStringData,jsonData){
+function parseClusterData(DTWHierarchyStringData,labelHierarchyStringData,imagesData,posesData){
     let maxLength = 0;
-    Mocap.loadDataFromFile(dataFileInput.files[0], (sequences) => {
+    const file = new File([posesData],"myFile")
+    posesData = null
+    Mocap.loadDataFromFile(file, (sequences) => {
         let DTWHierarchyClusters = DTWparser(DTWHierarchyStringData);
         let LabelHierarchyClusters = LabelParser(labelHierarchyStringData);
-        for (const key in jsonData) {
+        for (const key in imagesData) {
             if(!(key in allNodes)){
                 continue;
             }
-            allNodes[key].image = jsonData[key]
+            allNodes[key].image = imagesData[key]
         }
-        //console.log(allNodes)
+        imagesData = null;
         for(let sequence of sequences){
             if(!(sequence[0].split(' ')[2].trim() in allNodes)){
                 continue;
             }
             if(maxLength < sequence.length){
-                maxLength = sequence.length;
+                maxLength = sequence.length; 
             }
             allNodes[sequence[0].split(' ')[2].trim()].sequence = sequence;
         }
-        for(var key in allNodes){
-            for (var key2 in allNodes) {
-                let first = allNodes[key];
-                let second = allNodes[key2];
-                if(first.name.split('_')[0] == second.name.split('_')[0]){
-                    second.sameSequence.push(first);
-                }
-                if(first.label == second.label && first != second){
-                    second.sameLabel.push(first);
-                }   
-            }  
-        }
         createHierarchyButtons(DTWHierarchyClusters,LabelHierarchyClusters);
-    },null,20,3000);
+        DTWHierarchyClusters = null;
+        LabelHierarchyClusters = null;
+    },undefined,undefined,numberOfActions);
 }
 
 /**
  * Procedure for creating visualization for setting up current cluster.
  * @param  {*} node input node or cluster
- * @param  {*} goingDeep true if we are going down in hierarchy
+ * @param  {*} goingDeep true if we are going down in hierarchy, could be none if node is cluster
  */
 function graphLayer(node,goingDeep){ 
     if(goingDeep == null){
@@ -895,6 +983,7 @@ function graphLayer(node,goingDeep){
         selectWindowLabel.style.display = "block"; 
     }
     displayGraph();
+    isGraphShown = true;
     setUpperClusterButton();
     setUpClusterInfo();
 }
@@ -910,7 +999,7 @@ function LabelParser(data){
     var depth = 1;
     let result = {};
     for(var key in jsonData){
-        result[key] = recursiveParse(jsonData[key],null,depth,null,false,0," (Label " + key + ")")
+        result[key] = recursiveParse(jsonData[key],null,depth,null,false,0)
     }
     return result;
 }
@@ -924,7 +1013,7 @@ function LabelParser(data){
 function DTWparser(data){
     let jsonData = JSON.parse(data);
     var depth = 1;
-    return recursiveParse(jsonData.root,null,depth,null,true,0,"",{}); 
+    return recursiveParse(jsonData.root,null,depth,null,true,0,{}); 
 }
 
 
@@ -935,11 +1024,13 @@ function DTWparser(data){
  * @param  {Number} depth current depth
  * @param  {*} pivotNode pivot node of current cluster
  * @param  {Boolean} dtw true if parsing DTW hierarchy
+ * @param  {Number} number_in_branch number action in subtree
+ * @param  {*} labels_in_branch labels in branch, undefined when creating label hierarchy
  * 
  * @return new cluster
  */
-function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_branch,label,labels_in_branch){
-    let currCluster = new Cluster(pivotNode,upperCluster,depth,number_in_branch,label,labels_in_branch);
+function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_branch,labels_in_branch){
+    let currCluster = new Cluster(pivotNode,upperCluster,depth,number_in_branch,labels_in_branch);
     let clusterDistannces = {};
     for(let action of layerData){
         let distancesInFormat = {};
@@ -959,7 +1050,7 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
             currCluster.max_nodes_in_children_branches = action.number_in_branch;
         }
         if(typeof action.children !== 'undefined' && action.children.length > 1) {
-            currCluster.nextClusters[action.name] = recursiveParse(action.children,currCluster,depth + 1,node,dtw,action.number_in_branch,label,action.labels_in_branch);
+            currCluster.nextClusters[action.name] = recursiveParse(action.children,currCluster,depth + 1,node,dtw,action.number_in_branch,action.labels_in_branch);
         }
         currCluster.labels[node.label] = (currCluster.labels[node.label] || 0) + 1;
     }
@@ -967,6 +1058,14 @@ function recursiveParse(layerData,upperCluster,depth,pivotNode,dtw,number_in_bra
     return currCluster; 
 }
 
+/**
+ * Function for setting up Node.
+ * @param  {*} action input action
+ * @param  {*} currCluster current cluster
+ * @param  {Boolean} dtw true if parsing DTW hierarchy
+ * 
+ * @return node
+ */
 function setUpNode(action,currCluster,dtw){
     let node;
     if(action.name in allNodes){
@@ -981,7 +1080,11 @@ function setUpNode(action,currCluster,dtw){
             }
         }
     }else{
+        let ids =action.name.split('_');
+        let sequenceId = ids[0];
+        let labelId = ids[1];
         node = new Node(action.name);
+        settingNodesInCategoriesAndSequences(sequenceId,labelId,node);
         if(dtw){
             node.defaultDTWCluster = currCluster;
         }else{
@@ -992,6 +1095,30 @@ function setUpNode(action,currCluster,dtw){
     return node
 }
 
+/**
+ * Procedure for adding nodes to particular category and sequence.
+ * @param  {String} sequenceId sequence ID
+ * @param  {String} labelId label ID
+ * @param  {Node} node node
+ */
+function settingNodesInCategoriesAndSequences(sequenceId,labelId,node){
+    if(sequenceId in nodesInSequence){
+        nodesInSequence[sequenceId].push(node);
+    }else{
+        nodesInSequence[sequenceId] = [node];
+    }
+    if(labelId in nodesInCategories){
+        nodesInCategories[labelId].push(node);
+    }else{
+        nodesInCategories[labelId] = [node];
+    }
+}
+
+/**
+ * Procedure for computing links.
+ * @param  {*} clusterDistannces distances in cluster
+ * @param  {*} currCluster current cluster
+ */
 function computeLinks(clusterDistannces,currCluster){
     for(let key in clusterDistannces){
         let distancesInFormat = clusterDistannces[key][0];
@@ -1055,14 +1182,13 @@ function parseInToCords(sequence){
  * @param  {Number} fps fps
  */
 function showInTime(controller,frames,frame,button,slider,marginGap,fps){
-        showFrame(controller,frames,frame);
-        slider.style.marginLeft = (parseFloat(slider.style.marginLeft) + marginGap) + "px";
-        if(button.option == "runAnimation"){
-            setTimeout(() => {
-                frameQueue(controller,frames,frame+Math.floor(fps/10),button,slider,marginGap,fps);
-            },100);  
-        }
-        
+    showFrame(controller,frames,frame);
+    slider.style.marginLeft = (parseFloat(slider.style.marginLeft) + marginGap) + "px";
+    if(button.option == "runAnimation"){
+        setTimeout(() => {
+            frameQueue(controller,frames,frame+Math.floor(fps/10),button,slider,marginGap,fps);
+        },100);  
+    }    
 }
 
 /**
