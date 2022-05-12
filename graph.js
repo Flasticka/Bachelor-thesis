@@ -1,6 +1,7 @@
 import * as Mocap from './src/mocap.js';
 import * as Model from './src/model.js';
 import {VisualizationParts} from "./src/MotionsDifferenceVisualiser/Entities/VisualizationParts.js";
+import * as VS from './src/ComparisonVizualization/VisualizationService.js';
 
 /*
 * Variables
@@ -14,7 +15,8 @@ var isDTW = null;
 var maxDistanceInHierarchy = 1;
 var labelSubTreeContainer = null;
 var isGraphShown = false;
-
+var context = "";
+var contextOption = VS.ContextOption.NO_CONTEXT
 /*
 * Constats
 */
@@ -121,7 +123,13 @@ class Cluster{
  */
  async function loadInterfaceVisualization() {
     loadingWindow.style.display = 'block';
-    await loadDataFiles("./HDM05Data/allActionsHierarchy.txt","./HDM05Data/labelsHierarchies.txt","./HDM05Data/precomputedImages.txt","./HDM05Data/HDM05-category_description.txt","./HDM05Data/HDM05-120fps-normPOS.data",loadExploration);
+    const allActionsHierarchy = "./HDM05Data/allActionsHierarchy.txt";
+    const labelsHierarchies = "./HDM05Data/labelsHierarchies.txt";
+    const precomputedImages = "./HDM05Data/precomputedImages.txt";
+    const categoriesDescription = "./HDM05Data/HDM05-category_description.txt";
+    const actionsData = "./HDM05Data/HDM05-120fps-normPOS.data";
+    const contextFile = "./HDM05Data/HDM05-120fps-normPOS-DTWsampling.json";
+    await loadDataFiles(allActionsHierarchy,labelsHierarchies,precomputedImages,categoriesDescription,actionsData,contextFile,loadExploration);
     
 }
 
@@ -132,9 +140,10 @@ class Cluster{
  * @param  {String} imagesFile file path with precomputed images
  * @param  {String} categoriesFile file path with categories
  * @param  {String} posesFile file path with actions
+ * @param  {String} contextFile file path with context
  * @param  {*} callback callback function
  */
-async function loadDataFiles(dtwFile,labelFile,imagesFile,categoriesFile,posesFile,callback){
+async function loadDataFiles(dtwFile,labelFile,imagesFile,categoriesFile,posesFile,contextFile,callback){
     const response = await fetch(dtwFile); 
     const result1 = await response.text();
     const response2 = await fetch(labelFile);
@@ -145,6 +154,11 @@ async function loadDataFiles(dtwFile,labelFile,imagesFile,categoriesFile,posesFi
     const result4 = await response4.text();
     const response5 = await fetch(posesFile); 
     const result5 = await response5.text();
+    if(contextFile != null){
+        const response6 = await fetch(contextFile); 
+        context = await response6.text();
+        contextOption = VS.ContextOption.SAMPLED_CONTEXT;
+    }
     callback(result1,result2,result3,result4,result5); 
 }
 
@@ -359,7 +373,7 @@ function displayGraph(){
  * 
  */
 function clickLine(line){
-    const visualization = factory.visualizeSequenceDifferences(line.source.sequence,line.target.sequence, 800, undefined, undefined,vp);
+    const visualization = factory.visualizeSequenceDifferences(line.source.sequence,line.target.sequence, 800, contextOption, context,vp);
     visualization.children[1].querySelectorAll("span")[0].style.width="80px";
     visualization.children[2].querySelectorAll("span")[0].style.width="80px";
     contentBox.appendChild(visualization);
