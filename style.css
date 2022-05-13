@@ -234,20 +234,18 @@ svg {
 }
 
 #cluster-info {
-  width: 12rem;
-  position: absolute;
+  min-width: 12.5rem;
   padding-top: 0.5rem;
-  padding-left: 0.5rem;
-  right: 0;
+  min-height: auto;
   z-index: 0;
   pointer-events: none;
-  border-bottom: 1px solid black;
-  border-left: 1px solid black;
 }
 
 .depth-container {
   display: flex;
   justify-content: space-between;
+  padding-left: 0.5rem;
+  border-left: 1px solid black;
 }
 
 .depth-value {
@@ -263,7 +261,11 @@ h5 {
 
 ul {
   margin: 0;
+  padding: 0;
+  list-style-type: none;
 }
+
+
 
 #upper-cluster {
   order: 1;
@@ -297,4 +299,23 @@ ul {
 
 .errorMessage{
   color: red;
+}
+
+.labels-subtree-container{
+  padding-top: 1rem;
+  padding-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  border-bottom: 1px solid black;
+  border-left: 1px solid black;
+}
+
+.labels-current-cluster{
+  border-left: 1px solid black;
+  margin: 0;
+  padding-bottom: 0.5rem;
+  padding-left: 0.5rem;
+}
+.labels-current-cluster-ul{
+  padding-left: 0.5rem;
+  border-left: 1px solid black;
 }

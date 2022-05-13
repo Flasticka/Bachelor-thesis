@@ -196,6 +196,8 @@ function displayGraph(){
     const LINK_DISTANCE_NORMALIZING_VALUE = window.innerWidth/2;
     const RADIUS_VALUE = 85;
 
+    rightSideButtonGraphContainer.style.minWidth = WIDTH
+
     var force = d3.forceSimulation(nodes)
         .force("charge", d3.forceManyBody().strength(CHARGE_STRENGTH_VALUE))
         .force("link", d3.forceLink(links).distance((d) =>{
@@ -692,11 +694,12 @@ function labelsInCurrentCluster(clusterInfoContainer){
     const labelPattern = document.createElement("H5");
     labelPattern.innerText = "Labels in current cluster: ";
     labelPattern.setAttribute('class','labels-current-cluster')
+    labelInfoUL.setAttribute('class','labels-current-cluster-ul')
     clusterInfoContainer.appendChild(labelPattern);
     let orderedKeys = Object.keys(currentCluster.labels).map(x => parseInt(x)).sort((a,b) => a - b);
     for(let key of orderedKeys){
-        const labelInfoLI = document.createElement("ul");
-        labelInfoLI.innerText = key + ": " + currentCluster.labels[key];
+        const labelInfoLI = document.createElement("li");
+        labelInfoLI.innerText = allCategories[key].trim() + ": " + currentCluster.labels[key];
         labelInfoUL.appendChild(labelInfoLI);
     }
     clusterInfoContainer.appendChild(labelInfoUL);
@@ -726,8 +729,8 @@ function labelsInSubTreeOfCluster(node){
             if(counter == maxNextInSubTree){
                 break;
             }
-            const labelInfoLI = document.createElement("ul");
-            labelInfoLI.innerText = key + ": " + labels[key];
+            const labelInfoLI = document.createElement("li");
+            labelInfoLI.innerText = allCategories[key].trim() + ": " + labels[key];
             labelInfoUL.appendChild(labelInfoLI);
             counter++;
         }
@@ -765,7 +768,7 @@ function setUpClusterInfo(){
  */
 function labelContainerProcedure(node){
     const labelPattern = document.createElement("H4");
-    labelPattern.innerText = "Also in label " + node.label + ":";  
+    labelPattern.innerText = "Also in label " + allCategories[node.label].trim() + ":";  
     let labelContainer = document.createElement("div");
     labelContainer.setAttribute("id","label-container");
     labelContainer.appendChild(labelPattern);
