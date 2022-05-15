@@ -35,6 +35,7 @@ const rightSideButtonGraphContainer = document.getElementById('right-side_button
 const vp = new VisualizationParts(false, false, true, true, true, false, false);
 const loadingWindow = document.getElementById('loading-window');
 const loadingWindowHiddenLayer = document.getElementById('hidden-layer__loading-window');
+const loadingDataHiddenLayer= document.getElementById('loading-data')
 const findAction = document.getElementById('find-action');
 const findActionForm = document.getElementById('find-action__form');
 const findActionButton = document.getElementById('find-action__button');
@@ -123,6 +124,7 @@ class Cluster{
  */
  async function loadInterfaceVisualization() {
     loadingWindow.style.display = 'block';
+    loadingDataHiddenLayer.style.display = 'block';
     const allActionsHierarchy = "./HDM05Data/allActionsHierarchy.txt";
     const labelsHierarchies = "./HDM05Data/labelsHierarchies.txt";
     const precomputedImages = "./HDM05Data/precomputedImages.txt";
@@ -888,6 +890,7 @@ function createHierarchyButtons(DTWHierarchy,LabelHierarchy){
     buttonDiv.style.display = "inline-block";
     findAction.style.display = 'block';
     loadingWindow.style.display = 'none';
+    loadingDataHiddenLayer.style.display = 'none';
     const buttonDTWHierarchy = document.getElementById('DTW-hierarchy');
     const buttonLabelHierarchy = document.getElementById('label-hierarchy');
     buttonDTWHierarchy.onclick = () => {
@@ -1261,7 +1264,7 @@ function setFrame(sequence,canvas,button,slider,times){
             var diffy = py - event.pageY;
             px = event.pageX;
             py = event.pageY;
-            for (key in frames) {
+            for (let key in frames) {
                 frames[key].ophi = frames[key].ophi + diffx;
                 frames[key].ogamma = frames[key].ogamma + diffy;
             }

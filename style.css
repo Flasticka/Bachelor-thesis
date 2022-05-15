@@ -234,18 +234,21 @@ svg {
 }
 
 #cluster-info {
-  min-width: 12.5rem;
+  position: absolute;
+  right: 1rem;
+  width: 12.5rem;
   padding-top: 0.5rem;
-  min-height: auto;
   z-index: 0;
   pointer-events: none;
+  word-break: break-all;
+  padding-left: 0.5rem;
+  border-left: 1px solid black;
+  border-bottom: 1px solid black;
 }
 
 .depth-container {
   display: flex;
   justify-content: space-between;
-  padding-left: 0.5rem;
-  border-left: 1px solid black;
 }
 
 .depth-value {
@@ -274,6 +277,14 @@ ul {
   margin-bottom: 0.5rem;
 }
 
+#loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: absolute;
+  top: 50%;
+  left: 30%;
+}
 #loading-window, #hidden-layer__loading-window{
   border: 8px solid #f3f3f3;
   border-top: 8px solid #3498db;
@@ -282,17 +293,24 @@ ul {
   height: 50px;
   animation: spin 2s linear infinite;
   display: none;
+  font-size: 2rem;
+  z-index: 2;
+}
+#hidden-layer__loading-window{
   position: absolute;
   top: 50%;
   right: 50%;
-  font-size: 2rem;
-  z-index: 2;
 }
 
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+#loading-data{
+  display: none;
+}
+
 #find-action{
   display: none;
 }
@@ -304,18 +322,12 @@ ul {
 .labels-subtree-container{
   padding-top: 1rem;
   padding-bottom: 0.5rem;
-  padding-left: 0.5rem;
-  border-bottom: 1px solid black;
-  border-left: 1px solid black;
 }
 
 .labels-current-cluster{
-  border-left: 1px solid black;
   margin: 0;
   padding-bottom: 0.5rem;
-  padding-left: 0.5rem;
 }
-.labels-current-cluster-ul{
-  padding-left: 0.5rem;
-  border-left: 1px solid black;
+li{
+  padding-top: 0.5rem;
 }
